@@ -1,0 +1,44 @@
+name: DailyWordWidget
+options:
+  bundleIdPrefix: com.ufuk
+packages:
+  Supabase:
+    url: https://github.com/supabase/supabase-swift.git
+    from: 2.0.0
+targets:
+  DailyWordWidget:
+    type: application
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      - App
+      - Shared
+    dependencies:
+      - package: Supabase
+      - target: DailyWordWidgetExtension
+    settings:
+      PRODUCT_BUNDLE_IDENTIFIER: com.ufuk.DailyWordWidget
+      GENERATE_INFOPLIST_FILE: YES
+      CURRENT_PROJECT_VERSION: 1
+      MARKETING_VERSION: 1.0
+      ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+      CODE_SIGN_ENTITLEMENTS: App/DailyWordWidget.entitlements
+
+  DailyWordWidgetExtension:
+    type: app-extension
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      - Widget
+      - Shared
+    settings:
+      PRODUCT_BUNDLE_IDENTIFIER: com.ufuk.DailyWordWidget.WidgetExtension
+      GENERATE_INFOPLIST_FILE: YES
+      CURRENT_PROJECT_VERSION: 1
+      MARKETING_VERSION: 1.0
+      CODE_SIGN_ENTITLEMENTS: Widget/DailyWordWidgetExtension.entitlements
+    info:
+      path: Widget/Info.plist
+      properties:
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
