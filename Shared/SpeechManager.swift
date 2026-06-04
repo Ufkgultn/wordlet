@@ -2,6 +2,7 @@ import AVFoundation
 
 // MARK: - SpeechManager
 
+@MainActor
 final class SpeechManager: NSObject, AVSpeechSynthesizerDelegate {
     static let shared = SpeechManager()
 

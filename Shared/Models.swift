@@ -132,13 +132,26 @@ public struct UserProgress: Codable {
     public var unlockedLevels: [CEFRLevel]
     /// Her seviye için kazanılan yıldız sayısı (Practice testler için)
     public var levelStars: [String: Int]
+    
+    /// Sağa kaydırılan kelimeler (biliyorum)
+    public var knownWordIDs: [String]
+    /// Sola kaydırılan kelimeler (bilmiyorum)
+    public var unknownWordIDs: [String]
+    /// Tamamlanan günlük test sayısı (her seviye için, level.rawValue -> count)
+    public var dailyTestsCompleted: [String: Int]
+    /// Son günlük testin tarihi (yyyy-MM-dd formatında)
+    public var lastDailyTestDate: String?
 
     public static let initial = UserProgress(
         currentLevel: .a1,
         learnedWordIDs: [],
         quizScores: [],
         unlockedLevels: [.a1],
-        levelStars: [:]
+        levelStars: [:],
+        knownWordIDs: [],
+        unknownWordIDs: [],
+        dailyTestsCompleted: [:],
+        lastDailyTestDate: nil
     )
 
     public func isUnlocked(_ level: CEFRLevel) -> Bool {

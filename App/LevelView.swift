@@ -34,6 +34,9 @@ struct LevelView: View {
                             isCurrent: progress.currentLevel == level,
                             wordCount: WordManager.shared.words(for: level).count,
                             seenCount: seenCount(for: level),
+                            knownCount: knownCount(for: level),
+                            dailyTestCount: ProgressManager.shared.dailyTestsCount(for: level),
+                            canTakeExam: ProgressManager.shared.canTakeExam(for: level),
                             onTakTest: {
                                 selectedLevelForTest = level
                             }
@@ -98,7 +101,12 @@ struct LevelView: View {
 
     private func seenCount(for level: CEFRLevel) -> Int {
         let levelIDs = Set(WordManager.shared.words(for: level).map { $0.id })
-        return WordManager.shared.seenWordIDs().filter { levelIDs.contains($0) }.count
+        return progress.learnedWordIDs.filter { levelIDs.contains($0) }.count
+    }
+
+    private func knownCount(for level: CEFRLevel) -> Int {
+        let levelIDs = Set(WordManager.shared.words(for: level).map { $0.id })
+        return progress.knownWordIDs.filter { levelIDs.contains($0) }.count
     }
 }
 
@@ -110,6 +118,9 @@ private struct LevelCard: View {
     let isCurrent: Bool
     let wordCount: Int
     let seenCount: Int
+    let knownCount: Int
+    let dailyTestCount: Int
+    let canTakeExam: Bool
     let onTakTest: () -> Void
 
     private var progress: Double {
@@ -210,31 +221,85 @@ private struct LevelCard: View {
                     .background(Capsule().fill(badgeColor.opacity(0.15)))
                 }
             } else {
-                // Locked state — show exam button
-                HStack {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Bu seviyeyi açmak için")
-                            .font(.caption)
-                            .foregroundColor(.white.opacity(0.5))
-                        Text("sınava gir ve %70 al")
-                            .font(.caption.weight(.semibold))
-                            .foregroundColor(.white.opacity(0.7))
-                    }
-                    Spacer()
-                    Button(action: onTakTest) {
-                        HStack(spacing: 6) {
-                            Image(systemName: "pencil.and.list.clipboard")
-                            Text("Sınava Gir")
-                                .font(.subheadline.weight(.semibold))
+                // Locked state — show exam requirements or exam button
+                if canTakeExam {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Sınav Hakkı Açıldı!")
+                                .font(.caption.weight(.bold))
+                                .foregroundColor(Theme.correct)
+                            Text("Geçmek için en az %70 almalısın.")
+                                .font(.caption)
+                                .foregroundColor(.white.opacity(0.7))
                         }
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 10)
-                        .background(
-                            RoundedRectangle(cornerRadius: 12)
-                                .fill(badgeColor.opacity(0.8))
-                        )
+                        Spacer()
+                        Button(action: onTakTest) {
+                            HStack(spacing: 6) {
+                                Image(systemName: "pencil.and.list.clipboard")
+                                Text("Sınava Gir")
+                                    .font(.subheadline.weight(.semibold))
+                            }
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 10)
+                            .background(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .fill(badgeColor.opacity(0.8))
+                            )
+                        }
                     }
+                } else {
+                    VStack(alignment: .leading, spacing: 12) {
+                        HStack {
+                            Image(systemName: "lock.fill")
+                                .font(.caption)
+                            Text("Sınav Hakkı İçin Gereksinimler")
+                                .font(.caption.weight(.semibold))
+                        }
+                        .foregroundColor(.white.opacity(0.6))
+                        
+                        // Gereksinim 1: Günlük Test
+                        VStack(alignment: .leading, spacing: 4) {
+                            HStack {
+                                Text("Günlük Test")
+                                    .font(.caption2)
+                                Spacer()
+                                Text("\(min(dailyTestCount, 7))/7")
+                                    .font(.caption2.bold())
+                            }
+                            GeometryReader { geo in
+                                ZStack(alignment: .leading) {
+                                    Capsule().fill(Color.white.opacity(0.1))
+                                    Capsule().fill(dailyTestCount >= 7 ? Theme.correct : Theme.accent)
+                                        .frame(width: geo.size.width * CGFloat(min(dailyTestCount, 7)) / 7)
+                                }
+                            }
+                            .frame(height: 4)
+                        }
+                        .foregroundColor(.white.opacity(0.7))
+                        
+                        // Gereksinim 2: Bilinen Kelime
+                        VStack(alignment: .leading, spacing: 4) {
+                            HStack {
+                                Text("Bildiğin Kelimeler")
+                                    .font(.caption2)
+                                Spacer()
+                                Text("\(min(knownCount, 50))/50")
+                                    .font(.caption2.bold())
+                            }
+                            GeometryReader { geo in
+                                ZStack(alignment: .leading) {
+                                    Capsule().fill(Color.white.opacity(0.1))
+                                    Capsule().fill(knownCount >= 50 ? Theme.correct : Theme.accent)
+                                        .frame(width: geo.size.width * CGFloat(min(knownCount, 50)) / 50)
+                                }
+                            }
+                            .frame(height: 4)
+                        }
+                        .foregroundColor(.white.opacity(0.7))
+                    }
+                    .padding(12)
+                    .background(RoundedRectangle(cornerRadius: 12).fill(Color.black.opacity(0.15)))
                 }
             }
         }

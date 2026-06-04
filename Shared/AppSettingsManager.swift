@@ -188,6 +188,85 @@ public final class ProgressManager {
         return attemptLevelUnlock(scorePercent: scorePercent, targetLevel: next)
     }
 
+    // MARK: - Swipe Logic
+    
+    public func swipeRight(wordID: String) {
+        var p = progress
+        // Biliniyor listesine ekle
+        if !p.knownWordIDs.contains(wordID) {
+            p.knownWordIDs.append(wordID)
+        }
+        // Bilinmiyor listesinden çıkar
+        p.unknownWordIDs.removeAll { $0 == wordID }
+        
+        // learned listesine de ekleyelim ki mevcut mantığı bozmayalım
+        if !p.learnedWordIDs.contains(wordID) {
+             p.learnedWordIDs.append(wordID)
+        }
+        
+        progress = p
+        NotificationCenter.default.post(name: .progressDidChange, object: nil)
+    }
+    
+    public func swipeLeft(wordID: String) {
+         var p = progress
+         // Bilinmiyor listesine ekle
+         if !p.unknownWordIDs.contains(wordID) {
+             p.unknownWordIDs.append(wordID)
+         }
+         // Biliniyor listesinden çıkar
+         p.knownWordIDs.removeAll { $0 == wordID }
+         
+         // learned listesinden de çıkaralım
+         p.learnedWordIDs.removeAll { $0 == wordID }
+         
+         progress = p
+         NotificationCenter.default.post(name: .progressDidChange, object: nil)
+    }
+    
+    // MARK: - Daily Test Logic
+    
+    public func completeDailyTest() {
+        var p = progress
+        let level = p.currentLevel.rawValue
+        
+        // Sayacı artır
+        let count = p.dailyTestsCompleted[level] ?? 0
+        p.dailyTestsCompleted[level] = count + 1
+        
+        // Tarihi kaydet
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "yyyy-MM-dd"
+        p.lastDailyTestDate = dateFormatter.string(from: Date())
+        
+        progress = p
+        NotificationCenter.default.post(name: .progressDidChange, object: nil)
+    }
+    
+    public func hasTakenDailyTest() -> Bool {
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "yyyy-MM-dd"
+        let todayString = dateFormatter.string(from: Date())
+        
+        return progress.lastDailyTestDate == todayString
+    }
+    
+    public func dailyTestsCount(for level: CEFRLevel) -> Int {
+        progress.dailyTestsCompleted[level.rawValue] ?? 0
+    }
+    
+    public func canTakeExam(for level: CEFRLevel) -> Bool {
+        let requiredDailyTests = 7
+        let requiredKnownWords = 50
+        
+        let dailyTestCount = dailyTestsCount(for: level)
+        
+        let levelWords = WordManager.shared.words(for: level).map { $0.id }
+        let knownLevelWordsCount = progress.knownWordIDs.filter { levelWords.contains($0) }.count
+        
+        return dailyTestCount >= requiredDailyTests && knownLevelWordsCount >= requiredKnownWords
+    }
+
     // MARK: Migration
 
     private func migrateIfNeeded() {

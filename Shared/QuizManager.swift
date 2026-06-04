@@ -98,4 +98,44 @@ public class QuizManager {
             direction: direction
         )
     }
+    
+    public func generateDailyTest(for level: CEFRLevel) -> [QuizQuestion] {
+        let allLevelWords = WordManager.shared.words(for: level)
+        
+        let knownIDs = Set(ProgressManager.shared.progress.knownWordIDs)
+        let unknownIDs = Set(ProgressManager.shared.progress.unknownWordIDs)
+        
+        var knownWords = allLevelWords.filter { knownIDs.contains($0.id) }
+        var unknownWords = allLevelWords.filter { unknownIDs.contains($0.id) }
+        
+        let totalCount = 20
+        var unknownCount = max(2, totalCount / 10) // %10, en az 2
+        var knownCount = totalCount - unknownCount   // %90
+        
+        // Elimizde yeterince bilinmeyen yoksa, eksiği bilinenlerle tamamla
+        if unknownWords.count < unknownCount {
+            unknownCount = unknownWords.count
+            knownCount = totalCount - unknownCount
+        }
+        
+        // Elimizde yeterince bilinen yoksa, eksiği bilinmeyenlerle tamamla
+        if knownWords.count < knownCount {
+            knownCount = knownWords.count
+            unknownCount = totalCount - knownCount
+            
+            // Hala yetmiyorsa, diğer kelimelerden rastgele seç
+             if unknownWords.count < unknownCount {
+                 let otherWords = allLevelWords.filter { !knownIDs.contains($0.id) && !unknownIDs.contains($0.id) }
+                 unknownWords.append(contentsOf: otherWords)
+             }
+        }
+        
+        let selectedKnown = knownWords.shuffled().prefix(knownCount)
+        let selectedUnknown = unknownWords.shuffled().prefix(unknownCount)
+        
+        let combined = (Array(selectedKnown) + Array(selectedUnknown)).shuffled()
+        
+        // Distractor pool olarak tüm seviye kelimelerini ver
+        return combined.compactMap { makeQuestion(for: $0, distractorPool: allLevelWords) }
+    }
 }

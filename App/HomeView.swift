@@ -1,249 +1,428 @@
 import SwiftUI
 import WidgetKit
 
+// MARK: - HomeView (Tinder Swipe Style)
+
 struct HomeView: View {
     @EnvironmentObject var authManager: AuthManager
-    @State private var currentWord: Word?
-    @State private var cardScale: CGFloat = 1.0
-    @State private var cardOpacity: Double = 1.0
-    @State private var lastScrollOffset: CGFloat = 0
-
+    @State private var words: [Word] = []
     @State private var isPremium: Bool = AppSettingsManager.shared.isPremium
+    @State private var progress = ProgressManager.shared.progress
+    @State private var showDailyTest = false
 
     private var firstName: String {
         authManager.currentUser?.firstName ?? "Kullanıcı"
     }
 
     private var currentLevel: CEFRLevel {
-        ProgressManager.shared.progress.currentLevel
+        progress.currentLevel
     }
 
     var body: some View {
-        ScrollView {
-            GeometryReader { geo in
-                Color.clear
-                    .preference(key: ScrollOffsetPreferenceKey.self, value: geo.frame(in: .named("homeScroll")).minY)
-            }
-            .frame(height: 0)
+        ZStack {
+            // Background
+            Theme.backgroundGradient.ignoresSafeArea()
 
             VStack(spacing: 0) {
-                // MARK: Header
-                HStack {
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text("Today's Word")
-                            .font(.system(size: 30, weight: .bold, design: .rounded))
-                            .foregroundColor(Theme.textPrimary)
-                        HStack(spacing: 8) {
-                            LevelBadge(level: currentLevel)
-                            Text("İyi çalışmalar, \(firstName) ✨")
-                                .font(.subheadline)
-                                .foregroundColor(Theme.textSecondary)
-                        }
-                    }
-                    Spacer()
-                    
-                    VStack(alignment: .trailing, spacing: 8) {
-                        Button(action: { Task { await authManager.logout() } }) {
-                            Image(systemName: "rectangle.portrait.and.arrow.right")
-                                .font(.system(size: 16, weight: .bold))
-                                .foregroundColor(.white)
-                                .padding(12)
-                                .background(.ultraThinMaterial)
-                                .background(Color.white.opacity(0.1))
-                                .clipShape(Circle())
-                        }
-                        
-                        Button(action: {
-                            AppSettingsManager.shared.isPremium.toggle()
-                            isPremium = AppSettingsManager.shared.isPremium
-                        }) {
-                            Text(isPremium ? "Premium 👑" : "Premium Al")
-                                .font(.caption.bold())
-                                .foregroundColor(isPremium ? .yellow : .white)
-                                .padding(.horizontal, 10)
-                                .padding(.vertical, 6)
-                                .background(isPremium ? Color.yellow.opacity(0.2) : Color.white.opacity(0.1))
-                                .cornerRadius(12)
-                        }
-                    }
-                }
-                .padding(.horizontal, 24)
-                .padding(.top, 16)
-                .padding(.bottom, 20)
+                // Floating Header & Progress
+                floatingHeader
+                    .padding(.top, 10)
 
-                // MARK: Word Card
-                if let word = currentWord {
+                Spacer()
+
+                // Card Stack
+                if words.isEmpty {
                     VStack(spacing: 16) {
-                        if let imageURL = word.imageURL, let url = URL(string: imageURL) {
-                            AsyncImage(url: url) { phase in
-                                if let image = phase.image {
-                                    image.resizable().scaledToFill()
-                                } else {
-                                    Color.white.opacity(0.1)
-                                }
-                            }
-                            .frame(height: 140)
-                            .clipShape(RoundedRectangle(cornerRadius: 16))
-                        }
-
-                        Text(word.english)
-                            .font(.system(size: 42, weight: .bold, design: .serif))
-                            .foregroundColor(.white)
-
-                        Text(word.turkish)
-                            .font(.title3).fontWeight(.semibold)
-                            .foregroundColor(Theme.background)
-                            .padding(.horizontal, 20)
-                            .padding(.vertical, 10)
-                            .background(Theme.accent)
-                            .cornerRadius(20)
-
-                        Text("\"\(word.example)\"")
-                            .font(.body).italic()
-                            .foregroundColor(Theme.textPrimary)
-                            .multilineTextAlignment(.center)
-
-                        if let trExample = word.exampleTurkish {
-                            Text("\"\(trExample)\"")
-                                .font(.footnote)
-                                .foregroundColor(Theme.textSecondary)
-                                .multilineTextAlignment(.center)
-                        }
-
-                        HStack(spacing: 12) {
-                            Button {
-                                SpeechManager.shared.speakEnglish(word: word.english, example: word.example)
-                            } label: {
-                                Label("EN Listen", systemImage: "speaker.wave.2.fill")
-                                    .font(.subheadline.weight(.semibold))
-                            }
-                            .buttonStyle(.bordered)
-
-                            Button {
-                                SpeechManager.shared.speakTurkish(meaning: word.turkish, exampleTurkish: word.exampleTurkish)
-                            } label: {
-                                Label("TR Listen", systemImage: "speaker.wave.1.fill")
-                                    .font(.subheadline.weight(.semibold))
-                            }
-                            .buttonStyle(.bordered)
-                        }
-
-                        Button(action: changeWord) {
-                            Label("Sonraki Kelime", systemImage: "arrow.triangle.2.circlepath")
-                                .font(.headline)
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 14)
+                        ProgressView()
+                            .tint(.white)
+                        Text("Tüm kelimeleri gördün!")
+                            .font(.headline)
+                            .foregroundStyle(.white)
+                        Button("Baştan Başla") {
+                            loadInitialWords(forceReset: true)
                         }
                         .buttonStyle(.borderedProminent)
+                        .tint(Theme.accent)
                     }
-                    .padding(24)
-                    .glassCard(cornerRadius: 28)
-                    .padding(.horizontal, 24)
-                    .scaleEffect(cardScale)
-                    .opacity(cardOpacity)
                 } else {
-                    ProgressView().padding(.top, 120)
+                    ZStack {
+                        ForEach(words.reversed(), id: \.id) { word in
+                            SwipeCard(word: word) { direction in
+                                handleSwipe(word: word, direction: direction)
+                            }
+                            .id(word.id)
+                        }
+                    }
+                    .padding(.horizontal, 20)
                 }
 
-                Spacer().frame(height: 120)
+                Spacer()
+
+                // Bottom Action Area
+                bottomActionArea
+                    .padding(.bottom, 20)
             }
-        }
-        .coordinateSpace(name: "homeScroll")
-        .scrollIndicators(.hidden)
-        .onPreferenceChange(ScrollOffsetPreferenceKey.self) { offset in
-            let delta = offset - lastScrollOffset
-            if delta < -4 {
-                NotificationCenter.default.post(name: .menuButtonVisibilityDidChange, object: false)
-            } else if delta > 4 {
-                NotificationCenter.default.post(name: .menuButtonVisibilityDidChange, object: true)
-            }
-            lastScrollOffset = offset
         }
         .onAppear {
-            NotificationCenter.default.post(name: .menuButtonVisibilityDidChange, object: true)
-            if currentWord == nil { loadCurrent() }
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .wordFlowDidChange)) { _ in
-            if let id = AppSettingsManager.shared.getCurrentWordId(),
-               let synced = WordManager.shared.getWord(byId: id) {
-                withAnimation { currentWord = synced }
-            }
+            progress = ProgressManager.shared.progress
+            if words.isEmpty { loadInitialWords() }
         }
         .onReceive(NotificationCenter.default.publisher(for: .progressDidChange)) { _ in
-            // Seviye değişince yeni seviyeden kelime yükle
-            loadCurrent()
+            progress = ProgressManager.shared.progress
+        }
+        .sheet(isPresented: $showDailyTest) {
+            QuizView(dailyTestMode: true, targetLevel: currentLevel)
         }
     }
 
-    // MARK: - Word Loading
+    // MARK: - Floating Header
 
-    /// Mevcut kaydedilmiş kelimeyi yükle; yoksa yeni seç
-    private func loadCurrent() {
-        let level = ProgressManager.shared.progress.currentLevel
-        if let id = AppSettingsManager.shared.getCurrentWordId(),
-           let saved = WordManager.shared.getWord(byId: id),
-           saved.level == level {
-            currentWord = saved
-        } else {
-            advanceToNextWord()
-        }
-    }
+    private var floatingHeader: some View {
+        VStack(spacing: 16) {
+            HStack(spacing: 10) {
+                LevelBadge(level: currentLevel)
 
-    /// Bir sonraki kelimeye geç (tek kaynak — WordManager.nextWord)
-    private func advanceToNextWord() {
-        let level = ProgressManager.shared.progress.currentLevel
-        if let word = WordManager.shared.nextWord(for: level) {
-            currentWord = word
-            WordManager.shared.markWordAsSeen(id: word.id)
-            AppSettingsManager.shared.saveCurrentWordId(word.id)
-        }
-    }
+                Text("Merhaba, \(firstName) ✨")
+                    .font(.subheadline)
+                    .foregroundStyle(.white.opacity(0.9))
+                    .lineLimit(1)
 
-    private func changeWord() {
-        withAnimation(.easeOut(duration: 0.15)) {
-            cardScale = 0.92
-            cardOpacity = 0.6
-        }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-            advanceToNextWord()
-            WidgetCenter.shared.reloadAllTimelines()
-            withAnimation(.spring(response: 0.5, dampingFraction: 0.6)) {
-                cardScale = 1.0
-                cardOpacity = 1.0
+                Spacer()
+
+                Button {
+                    AppSettingsManager.shared.isPremium.toggle()
+                    isPremium = AppSettingsManager.shared.isPremium
+                } label: {
+                    Text(isPremium ? "👑" : "Premium Al")
+                        .font(.caption.bold())
+                        .foregroundColor(isPremium ? .yellow : .white)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .glassEffect(.regular, in: Capsule())
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+            .glassEffect(.regular, in: Capsule())
+            .padding(.horizontal, 16)
+
+            // Progress Bar (Known Words)
+            VStack(spacing: 6) {
+                let totalLevelWords = WordManager.shared.words(for: currentLevel).count
+                let knownLevelWords = knownWordsCount()
+                let progressFraction = totalLevelWords > 0 ? Double(knownLevelWords) / Double(totalLevelWords) : 0
+
+                HStack {
+                    Text("Öğrenilen Kelimeler")
+                        .font(.caption2)
+                        .foregroundStyle(.white.opacity(0.7))
+                    Spacer()
+                    Text("\(knownLevelWords) / \(totalLevelWords)")
+                        .font(.caption2.bold())
+                        .foregroundStyle(Theme.accent)
+                }
+                .padding(.horizontal, 24)
+
+                GeometryReader { geo in
+                    ZStack(alignment: .leading) {
+                        Capsule()
+                            .fill(Color.white.opacity(0.1))
+                        Capsule()
+                            .fill(Theme.accent)
+                            .frame(width: max(0, geo.size.width * progressFraction))
+                    }
+                }
+                .frame(height: 6)
+                .padding(.horizontal, 24)
             }
         }
     }
-}
 
-// MARK: - Level Badge
+    // MARK: - Bottom Action Area
 
-struct LevelBadge: View {
-    let level: CEFRLevel
+    private var bottomActionArea: some View {
+        VStack(spacing: 20) {
+            // Manual Swipe Buttons
+            HStack(spacing: 40) {
+                Button {
+                    if let topWord = words.first {
+                        handleSwipe(word: topWord, direction: .left)
+                    }
+                } label: {
+                    ZStack {
+                        Circle()
+                            .fill(Color.white.opacity(0.1))
+                            .frame(width: 64, height: 64)
+                        Image(systemName: "xmark")
+                            .font(.system(size: 24, weight: .bold))
+                            .foregroundColor(Theme.wrong)
+                    }
+                }
+                .disabled(words.isEmpty)
 
-    private var badgeColor: Color {
-        switch level {
-        case .a1: return .green
-        case .a2: return .blue
-        case .b1: return .orange
-        case .b2: return .purple
+                Button {
+                    if let topWord = words.first {
+                        handleSwipe(word: topWord, direction: .right)
+                    }
+                } label: {
+                    ZStack {
+                        Circle()
+                            .fill(Color.white.opacity(0.1))
+                            .frame(width: 64, height: 64)
+                        Image(systemName: "checkmark")
+                            .font(.system(size: 24, weight: .bold))
+                            .foregroundColor(Theme.correct)
+                    }
+                }
+                .disabled(words.isEmpty)
+            }
+
+            // Daily Test Button
+            Button {
+                showDailyTest = true
+            } label: {
+                HStack {
+                    Image(systemName: "target")
+                    Text(ProgressManager.shared.hasTakenDailyTest() ? "Günlük Test (Tamamlandı)" : "Günlük Teste Başla")
+                }
+                .font(.headline)
+                .foregroundColor(.white)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 16)
+                .background(
+                    RoundedRectangle(cornerRadius: 16)
+                        .fill(ProgressManager.shared.hasTakenDailyTest() ? Theme.accent.opacity(0.5) : Theme.accent)
+                )
+            }
+            .padding(.horizontal, 24)
         }
     }
 
-    var body: some View {
-        Text(level.rawValue)
-            .font(.system(size: 11, weight: .bold))
-            .foregroundColor(.white)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 3)
-            .background(Capsule().fill(badgeColor))
+    // MARK: - Logic
+
+    private func knownWordsCount() -> Int {
+        let levelWords = WordManager.shared.words(for: currentLevel).map { $0.id }
+        return progress.knownWordIDs.filter { levelWords.contains($0) }.count
+    }
+
+    private func handleSwipe(word: Word, direction: SwipeDirection) {
+        if direction == .right {
+            ProgressManager.shared.swipeRight(wordID: word.id)
+        } else {
+            ProgressManager.shared.swipeLeft(wordID: word.id)
+        }
+        
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        
+        withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+            words.removeAll { $0.id == word.id }
+        }
+
+        if words.count < 3 {
+            loadMoreWords()
+        }
+    }
+
+    private func loadInitialWords(forceReset: Bool = false) {
+        let level = currentLevel
+        let allWords = WordManager.shared.words(for: level)
+        
+        let knownIDs = Set(progress.knownWordIDs)
+        let unknownIDs = Set(progress.unknownWordIDs)
+
+        var feed: [Word] = []
+
+        if !forceReset {
+            // Henüz sağa kaydırılmamış kelimeler (biliyorum denmemiş)
+            let unseenOrUnknown = allWords.filter { !knownIDs.contains($0.id) }
+            // Önce hiç görülmemişler, sonra bilinmeyenler
+            let totallyUnseen = unseenOrUnknown.filter { !unknownIDs.contains($0.id) }
+            let stillUnknown = unseenOrUnknown.filter { unknownIDs.contains($0.id) }
+            
+            feed.append(contentsOf: totallyUnseen.shuffled().prefix(10))
+            feed.append(contentsOf: stillUnknown.shuffled().prefix(10))
+            feed.shuffle()
+        } else {
+            // Baştan başla (sadece gösterim amaçlı, progressi sıfırlamıyoruz)
+            feed.append(contentsOf: allWords.shuffled().prefix(20))
+        }
+
+        words = feed
+    }
+
+    private func loadMoreWords() {
+        let level = currentLevel
+        let allWords = WordManager.shared.words(for: level)
+        let knownIDs = Set(progress.knownWordIDs)
+        let existingIDs = Set(words.map { $0.id })
+        
+        let unseenOrUnknown = allWords.filter { !knownIDs.contains($0.id) && !existingIDs.contains($0.id) }
+        
+        if !unseenOrUnknown.isEmpty {
+            words.append(contentsOf: unseenOrUnknown.shuffled().prefix(10))
+        }
     }
 }
 
-// MARK: - Scroll Preference Key
+// MARK: - Swipe Card
 
-private struct ScrollOffsetPreferenceKey: PreferenceKey {
-    static var defaultValue: CGFloat = 0
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
-        value = nextValue()
+enum SwipeDirection {
+    case left, right
+}
+
+struct SwipeCard: View {
+    let word: Word
+    let onSwiped: (SwipeDirection) -> Void
+
+    @State private var offset: CGSize = .zero
+    @State private var color: Color = .clear
+
+    private let swipeThreshold: CGFloat = 100
+
+    var body: some View {
+        GeometryReader { geo in
+            VStack(spacing: 24) {
+                // Word Header
+                Text(word.english)
+                    .font(.system(size: 42, weight: .bold, design: .serif))
+                    .foregroundStyle(.white)
+                    .multilineTextAlignment(.center)
+                    .padding(.top, 40)
+
+                Text(word.turkish)
+                    .font(.title3.weight(.bold))
+                    .foregroundStyle(Theme.background)
+                    .padding(.horizontal, 24)
+                    .padding(.vertical, 10)
+                    .background(Color.white.opacity(0.9))
+                    .clipShape(Capsule())
+
+                Spacer()
+
+                // Example
+                VStack(spacing: 12) {
+                    Text("\"\(word.example)\"")
+                        .font(.body.italic())
+                        .foregroundStyle(.white.opacity(0.9))
+                        .multilineTextAlignment(.center)
+
+                    if let tr = word.exampleTurkish {
+                        Divider()
+                            .background(Color.white.opacity(0.15))
+
+                        Text("\"\(tr)\"")
+                            .font(.footnote)
+                            .foregroundStyle(.white.opacity(0.55))
+                            .multilineTextAlignment(.center)
+                    }
+                }
+                .padding(20)
+                .background(Color.black.opacity(0.2))
+                .cornerRadius(16)
+
+                Spacer()
+
+                // Audio Actions
+                HStack(spacing: 20) {
+                    Button {
+                        SpeechManager.shared.speakEnglish(word: word.english, example: word.example)
+                    } label: {
+                        Image(systemName: "speaker.wave.2.fill")
+                            .font(.title2)
+                            .foregroundColor(.white)
+                            .frame(width: 50, height: 50)
+                            .background(Circle().fill(Color.white.opacity(0.15)))
+                    }
+
+                    Button {
+                        SpeechManager.shared.speakTurkish(meaning: word.turkish, exampleTurkish: word.exampleTurkish)
+                    } label: {
+                        Text("TR")
+                            .font(.headline.weight(.bold))
+                            .foregroundColor(.white)
+                            .frame(width: 50, height: 50)
+                            .background(Circle().fill(Color.white.opacity(0.15)))
+                    }
+                }
+                .padding(.bottom, 30)
+            }
+            .padding(20)
+            .frame(width: geo.size.width, height: geo.size.height)
+            .background(
+                ZStack {
+                    Theme.accent.opacity(0.8) // Base card color
+                    color // Swipe overlay color
+                }
+            )
+            .cornerRadius(24)
+            .shadow(color: .black.opacity(0.2), radius: 10, y: 5)
+            // Overlay Labels
+            .overlay(
+                ZStack {
+                    // Right Swipe Label (Know)
+                    Text("BİLİYORUM")
+                        .font(.title.bold())
+                        .foregroundColor(Theme.correct)
+                        .padding()
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 10)
+                                .stroke(Theme.correct, lineWidth: 3)
+                        )
+                        .rotationEffect(.degrees(-15))
+                        .opacity(offset.width > 20 ? Double(offset.width / swipeThreshold) : 0)
+                        .position(x: 100, y: 80)
+
+                    // Left Swipe Label (Don't Know)
+                    Text("BİLMİYORUM")
+                        .font(.title.bold())
+                        .foregroundColor(Theme.wrong)
+                        .padding()
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 10)
+                                .stroke(Theme.wrong, lineWidth: 3)
+                        )
+                        .rotationEffect(.degrees(15))
+                        .opacity(offset.width < -20 ? Double(-offset.width / swipeThreshold) : 0)
+                        .position(x: geo.size.width - 120, y: 80)
+                }
+            )
+        }
+        .offset(x: offset.width, y: offset.height * 0.4)
+        .rotationEffect(.degrees(Double(offset.width / 15)))
+        .gesture(
+            DragGesture()
+                .onChanged { gesture in
+                    offset = gesture.translation
+                    withAnimation {
+                        changeColor(width: offset.width)
+                    }
+                }
+                .onEnded { _ in
+                    withAnimation(.spring()) {
+                        swipeCard(width: offset.width)
+                    }
+                }
+        )
+    }
+
+    private func swipeCard(width: CGFloat) {
+        if width > swipeThreshold {
+            offset = CGSize(width: 1000, height: 0)
+            onSwiped(.right)
+        } else if width < -swipeThreshold {
+            offset = CGSize(width: -1000, height: 0)
+            onSwiped(.left)
+        } else {
+            offset = .zero
+            color = .clear
+        }
+    }
+
+    private func changeColor(width: CGFloat) {
+        if width > 0 {
+            color = Theme.correct.opacity(Double(width / swipeThreshold) * 0.5)
+        } else if width < 0 {
+            color = Theme.wrong.opacity(Double(-width / swipeThreshold) * 0.5)
+        }
     }
 }

@@ -35,20 +35,8 @@ public struct GlassCardModifier: ViewModifier {
     
     public func body(content: Content) -> some View {
         content
-            .background(.ultraThinMaterial)
-            .background(Color.white.opacity(0.05))
-            .cornerRadius(cornerRadius)
-            .overlay(
-                RoundedRectangle(cornerRadius: cornerRadius)
-                    .stroke(
-                        LinearGradient(
-                            colors: [Color.white.opacity(0.4), Color.white.opacity(0.1)],
-                            startPoint: .topLeading, endPoint: .bottomTrailing
-                        ),
-                        lineWidth: 1
-                    )
-            )
-            .shadow(color: Color.black.opacity(0.2), radius: 15, x: 0, y: 10)
+            .glassEffect(.regular, in: RoundedRectangle(cornerRadius: cornerRadius))
+            .shadow(color: Color.black.opacity(0.12), radius: 12, x: 0, y: 8)
     }
 }
 

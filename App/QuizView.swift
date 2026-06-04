@@ -5,6 +5,7 @@ import WidgetKit
 
 struct QuizView: View {
     let levelTestMode: Bool
+    let dailyTestMode: Bool
     @State private var targetLevel: CEFRLevel
     @State private var starLevel: Int? = nil
 
@@ -20,11 +21,12 @@ struct QuizView: View {
     @State private var progressAnim: CGFloat = 0
     @State private var isStarted = false
 
-    init(levelTestMode: Bool = false, targetLevel: CEFRLevel? = nil, starLevel: Int? = nil) {
+    init(levelTestMode: Bool = false, dailyTestMode: Bool = false, targetLevel: CEFRLevel? = nil, starLevel: Int? = nil) {
         self.levelTestMode = levelTestMode
+        self.dailyTestMode = dailyTestMode
         self._targetLevel = State(initialValue: targetLevel ?? ProgressManager.shared.progress.currentLevel)
         self._starLevel = State(initialValue: starLevel)
-        self._isStarted = State(initialValue: levelTestMode || starLevel != nil)
+        self._isStarted = State(initialValue: levelTestMode || dailyTestMode || starLevel != nil)
     }
 
     // MARK: Computed
@@ -73,9 +75,9 @@ struct QuizView: View {
                 }
             }
         }
-        .onAppear { 
+        .onAppear {
             if isStarted && questions.isEmpty {
-                startQuiz() 
+                startQuiz()
             }
         }
         .sheet(isPresented: $showResult) {
@@ -157,7 +159,7 @@ struct QuizView: View {
                 .foregroundColor(.white)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 32)
-            Button("Geri") { 
+            Button("Geri") {
                 if levelTestMode { dismiss() }
                 else { withAnimation { isStarted = false } }
             }
@@ -168,7 +170,7 @@ struct QuizView: View {
 
     private var quizHeader: some View {
         HStack {
-            Button(action: { 
+            Button(action: {
                 if levelTestMode { dismiss() }
                 else { withAnimation { isStarted = false } }
             }) {
@@ -182,7 +184,7 @@ struct QuizView: View {
             Spacer()
 
             VStack(spacing: 2) {
-                Text(levelTestMode ? "\(targetLevel.rawValue) Seviye Sınavı" : "\(targetLevel.rawValue) - \(starLevel ?? 1) Yıldız")
+                Text(dailyTestMode ? "Günlük Test 🎯" : levelTestMode ? "\(targetLevel.rawValue) Seviye Sınavı" : "\(targetLevel.rawValue) - \(starLevel ?? 1) Yıldız")
                     .font(.headline)
                     .foregroundColor(.white)
                 Text("Soru \(min(currentIndex + 1, questions.count))/\(questions.count)")
@@ -218,10 +220,7 @@ struct QuizView: View {
             }
         }
         .frame(height: 6)
-        .onChange(of: currentIndex) { _ in
-            progressAnim = progressFraction
-        }
-        .onAppear {
+        .onChange(of: currentIndex, initial: true) { _, _ in
             progressAnim = progressFraction
         }
     }
@@ -291,7 +290,7 @@ struct QuizView: View {
                 VStack(spacing: 8) {
                     Text(scoreEmoji)
                         .font(.system(size: 70))
-                    Text("\(targetLevel.rawValue) \(starLevel != nil ? "- \(starLevel!) Yıldız" : "Sınav")")
+                    Text(dailyTestMode ? "Günlük Test" : "\(targetLevel.rawValue) \(starLevel != nil ? "- \(starLevel!) Yıldız" : "Sınav")")
                         .font(.system(size: 16, weight: .bold))
                         .foregroundColor(.white)
                         .padding(.horizontal, 16)
@@ -369,11 +368,15 @@ struct QuizView: View {
     // MARK: - Logic
 
     private func startQuiz() {
-        questions = QuizManager.shared.generateQuiz(
-            targetLevel: targetLevel,
-            levelTest: levelTestMode,
-            starLevel: starLevel
-        )
+        if dailyTestMode {
+            questions = QuizManager.shared.generateDailyTest(for: targetLevel)
+        } else {
+            questions = QuizManager.shared.generateQuiz(
+                targetLevel: targetLevel,
+                levelTest: levelTestMode,
+                starLevel: starLevel
+            )
+        }
         currentIndex = 0
         score = 0
         selectedChoice = nil
@@ -403,7 +406,9 @@ struct QuizView: View {
     }
 
     private func completeQuiz() {
-        if levelTestMode {
+        if dailyTestMode {
+            ProgressManager.shared.completeDailyTest()
+        } else if levelTestMode {
             didUnlock = ProgressManager.shared.attemptLevelUnlock(
                 scorePercent: scorePercent,
                 targetLevel: targetLevel
@@ -443,6 +448,9 @@ struct QuizView: View {
     }
 
     private var resultTitle: String {
+        if dailyTestMode {
+            return "Günlük Test Tamamlandı!"
+        }
         if levelTestMode {
             return scorePercent >= 70 ? "\(targetLevel.rawValue) Seviyesi Açıldı!" : "Bir Daha Dene!"
         }
@@ -450,6 +458,9 @@ struct QuizView: View {
     }
 
     private var resultMessage: String {
+        if dailyTestMode {
+            return "Harika! Bugünün pratik hedefini tamamladın. Yarın görüşmek üzere!"
+        }
         if levelTestMode {
             return scorePercent >= 70
                 ? "Tebrikler! \(targetLevel.rawValue) kelimelerini görmeye başlayabilirsin."
