@@ -18,12 +18,26 @@ struct Provider: TimelineProvider {
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<Entry>) -> ()) {
         let now = Date()
-        let currentWord = resolveCurrentWord()
         let manager = AppSettingsManager.shared
         let intervalMinutes = max(5, min(300, manager.settings.widgetUpdateIntervalMinutes))
+        let intervalSeconds = Double(intervalMinutes) * 60
         
+        let lastChange = manager.getLastWordChangeDate() ?? Date(timeIntervalSince1970: 0)
+        let elapsedSeconds = now.timeIntervalSince(lastChange)
+        
+        // Eğer aralık süresi dolmuşsa kelimeyi otomatik değiştir
+        if elapsedSeconds >= intervalSeconds {
+            manager.forceNextWord()
+        }
+        
+        let currentWord = resolveCurrentWord()
         let entries = [SimpleEntry(date: now, word: currentWord)]
-        completion(Timeline(entries: entries, policy: .after(now.addingTimeInterval(Double(intervalMinutes) * 60))))
+        
+        // Bir sonraki güncelleme zamanını hesapla (son değişim + aralık)
+        let updatedLastChange = manager.getLastWordChangeDate() ?? now
+        let nextUpdateDate = max(updatedLastChange.addingTimeInterval(intervalSeconds), now.addingTimeInterval(30))
+        
+        completion(Timeline(entries: entries, policy: .after(nextUpdateDate)))
     }
 
     private func resolveCurrentWord() -> Word {
@@ -131,29 +145,46 @@ struct DailyWordWidgetExtensionEntryView: View {
                     
                     // Alt Kısım: Örnek Cümle
                     if family != .systemSmall {
-                        Text(entry.word.example)
-                            .font(.system(size: 13))
-                            .italic()
-                            .foregroundColor(colorScheme == .dark ? .white.opacity(0.6) : .black.opacity(0.5))
-                            .lineLimit(4)
-                            .minimumScaleFactor(0.85)
-                            .multilineTextAlignment(.leading)
-                            .fixedSize(horizontal: false, vertical: true)
-                            .padding(.top, 8)
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(entry.word.example)
+                                .font(.system(size: 12))
+                                .italic()
+                                .foregroundColor(colorScheme == .dark ? .white.opacity(0.85) : .black.opacity(0.75))
+                            
+                            if let tr = entry.word.exampleTurkish, !tr.isEmpty {
+                                Text(tr)
+                                    .font(.system(size: 10.5))
+                                    .foregroundColor(colorScheme == .dark ? .white.opacity(0.55) : .black.opacity(0.5))
+                            }
+                        }
+                        .lineLimit(4)
+                        .minimumScaleFactor(0.8)
+                        .multilineTextAlignment(.leading)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.top, 6)
                     }
                     
                     // Buton (iOS 17+)
                     if #available(iOS 17.0, *) {
                         HStack {
                             Spacer()
-                            Button(intent: NextWordIntent()) {
-                                Image(systemName: "arrow.right")
-                                    .font(.system(size: 12, weight: .bold))
-                                    .foregroundColor(colorScheme == .dark ? .white : .black)
+                            if AppSettingsManager.shared.isPremium {
+                                Button(intent: NextWordIntent()) {
+                                    Image(systemName: "arrow.right")
+                                        .font(.system(size: 12, weight: .bold))
+                                        .foregroundColor(colorScheme == .dark ? .white : .black)
+                                        .padding(6)
+                                        .background(Circle().fill(colorScheme == .dark ? .white.opacity(0.1) : .black.opacity(0.05)))
+                                }
+                                .buttonStyle(.plain)
+                            } else {
+                                // Premium olmayan kullanıcılar için kilitli durum (Tıklayınca uygulamayı açar)
+                                Image(systemName: "crown.fill")
+                                    .font(.system(size: 12))
+                                    .foregroundColor(.yellow)
                                     .padding(6)
-                                    .background(Circle().fill(colorScheme == .dark ? .white.opacity(0.1) : .black.opacity(0.05)))
+                                    .background(Circle().fill(Color.yellow.opacity(0.15)))
                             }
-                            .buttonStyle(.plain)
                         }
                         .padding(.top, 6)
                     }

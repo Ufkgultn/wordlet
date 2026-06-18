@@ -9,9 +9,19 @@ struct HomeView: View {
     @State private var isPremium: Bool = AppSettingsManager.shared.isPremium
     @State private var progress = ProgressManager.shared.progress
     @State private var showDailyTest = false
+    @State private var showPaywall = false
 
-    private var firstName: String {
-        authManager.currentUser?.firstName ?? "Kullanıcı"
+    @StateObject private var socialManager = SocialManager.shared
+
+    private var displayName: String {
+        if let profile = socialManager.myProfile {
+            return profile.displayName
+        }
+        return authManager.currentUser?.firstName ?? "Kullanıcı"
+    }
+
+    private var avatarEmoji: String {
+        return socialManager.myProfile?.avatarEmoji ?? "🚀"
     }
 
     private var currentLevel: CEFRLevel {
@@ -21,7 +31,7 @@ struct HomeView: View {
     var body: some View {
         ZStack {
             // Background
-            Theme.backgroundGradient.ignoresSafeArea()
+            AppBackground()
 
             VStack(spacing: 0) {
                 // Floating Header & Progress
@@ -65,13 +75,22 @@ struct HomeView: View {
         }
         .onAppear {
             progress = ProgressManager.shared.progress
+            isPremium = AppSettingsManager.shared.isPremium
             if words.isEmpty { loadInitialWords() }
+            Task {
+                await socialManager.loadProfileAndFriends()
+            }
         }
         .onReceive(NotificationCenter.default.publisher(for: .progressDidChange)) { _ in
             progress = ProgressManager.shared.progress
         }
         .sheet(isPresented: $showDailyTest) {
             QuizView(dailyTestMode: true, targetLevel: currentLevel)
+        }
+        .sheet(isPresented: $showPaywall, onDismiss: {
+            isPremium = AppSettingsManager.shared.isPremium
+        }) {
+            PremiumPaywallView()
         }
     }
 
@@ -82,16 +101,18 @@ struct HomeView: View {
             HStack(spacing: 10) {
                 LevelBadge(level: currentLevel)
 
-                Text("Merhaba, \(firstName) ✨")
-                    .font(.subheadline)
-                    .foregroundStyle(.white.opacity(0.9))
+                Text(avatarEmoji)
+                    .font(.system(size: 20))
+                
+                Text(displayName)
+                    .font(.system(size: 15, weight: .bold, design: .rounded))
+                    .foregroundColor(.white.opacity(0.95))
                     .lineLimit(1)
 
                 Spacer()
 
                 Button {
-                    AppSettingsManager.shared.isPremium.toggle()
-                    isPremium = AppSettingsManager.shared.isPremium
+                    showPaywall = true
                 } label: {
                     Text(isPremium ? "👑" : "Premium Al")
                         .font(.caption.bold())
@@ -179,6 +200,7 @@ struct HomeView: View {
 
             // Daily Test Button
             Button {
+                guard !ProgressManager.shared.hasTakenDailyTest() else { return }
                 showDailyTest = true
             } label: {
                 HStack {
@@ -186,14 +208,15 @@ struct HomeView: View {
                     Text(ProgressManager.shared.hasTakenDailyTest() ? "Günlük Test (Tamamlandı)" : "Günlük Teste Başla")
                 }
                 .font(.headline)
-                .foregroundColor(.white)
+                .foregroundColor(ProgressManager.shared.hasTakenDailyTest() ? .white.opacity(0.5) : .white)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 16)
                 .background(
                     RoundedRectangle(cornerRadius: 16)
-                        .fill(ProgressManager.shared.hasTakenDailyTest() ? Theme.accent.opacity(0.5) : Theme.accent)
+                        .fill(ProgressManager.shared.hasTakenDailyTest() ? Color.white.opacity(0.12) : Theme.accent)
                 )
             }
+            .disabled(ProgressManager.shared.hasTakenDailyTest())
             .padding(.horizontal, 24)
         }
     }
@@ -261,6 +284,38 @@ struct HomeView: View {
         if !unseenOrUnknown.isEmpty {
             words.append(contentsOf: unseenOrUnknown.shuffled().prefix(10))
         }
+    }
+}
+
+// MARK: - Level Badge Component
+
+struct LevelBadge: View {
+    let level: CEFRLevel
+    
+    private var levelColor: Color {
+        switch level {
+        case .a1: return Color(red: 0.25, green: 0.88, blue: 0.53) // Minty Emerald
+        case .a2: return Color(red: 0.23, green: 0.60, blue: 0.98) // Electric Blue
+        case .b1: return Color(red: 1.00, green: 0.62, blue: 0.20) // Sunset Orange
+        case .b2: return Color(red: 0.70, green: 0.40, blue: 0.96) // Neon Purple
+        }
+    }
+    
+    var body: some View {
+        Text(level.rawValue)
+            .font(.system(size: 14, weight: .black, design: .rounded))
+            .foregroundColor(.white)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+            .background(
+                Capsule()
+                    .fill(levelColor.opacity(0.25))
+                    .overlay(
+                        Capsule()
+                            .stroke(levelColor.opacity(0.8), lineWidth: 1.5)
+                    )
+            )
+            .shadow(color: levelColor.opacity(0.3), radius: 6, x: 0, y: 3)
     }
 }
 
@@ -350,7 +405,7 @@ struct SwipeCard: View {
             .frame(width: geo.size.width, height: geo.size.height)
             .background(
                 ZStack {
-                    Theme.accent.opacity(0.8) // Base card color
+                    Theme.accent // Fully opaque vibrant mint card background
                     color // Swipe overlay color
                 }
             )

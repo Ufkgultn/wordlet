@@ -44,13 +44,18 @@ public class QuizManager {
         // Soru sayısını belirle
         let finalCount: Int
         if levelTest {
-            finalCount = 20 // Seviye sınavları artık 20 soru
+            if let sourceLevel = level.previous {
+                finalCount = ProgressRequirements.requirements(for: sourceLevel).examQuestionCount
+            } else {
+                finalCount = 20
+            }
         } else if let star = starLevel {
-            switch star {
-            case 1: finalCount = 10
-            case 2: finalCount = 15
-            case 3: finalCount = 20
-            default: finalCount = 10
+            if star <= 3 {
+                finalCount = 10
+            } else if star <= 7 {
+                finalCount = 15
+            } else {
+                finalCount = 20
             }
         } else {
             finalCount = count ?? 10

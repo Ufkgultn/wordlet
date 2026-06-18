@@ -53,12 +53,22 @@ public class AppSettingsManager {
         return defaults.object(forKey: "nextRefreshDate") as? Date
     }
 
+    public func saveLastWordChangeDate(_ date: Date) {
+        defaults.set(date, forKey: "lastWordChangeDate")
+        defaults.synchronize()
+    }
+
+    public func getLastWordChangeDate() -> Date? {
+        return defaults.object(forKey: "lastWordChangeDate") as? Date
+    }
+
     /// Widget'ta gösterilecek sonraki kelimeye geç
     public func forceNextWord() {
         let level = ProgressManager.shared.progress.currentLevel
         if let next = WordManager.shared.nextWord(for: level) {
             saveCurrentWordId(next.id)
             WordManager.shared.markWordAsSeen(id: next.id)
+            saveLastWordChangeDate(Date())
         }
         NotificationCenter.default.post(name: .wordFlowDidChange, object: nil)
     }
@@ -77,6 +87,8 @@ public class AppSettingsManager {
         if !Calendar.current.isDateInToday(lastReset) {
             defaults.set(0, forKey: "dailyManualChangeCount")
             defaults.set(0, forKey: "dailyAutoChangeCount")
+            defaults.set(0, forKey: "dailySwipeCount")
+            defaults.set(0, forKey: "dailyDuelCount")
             defaults.set(now, forKey: "lastResetDate")
             defaults.synchronize()
         }
@@ -90,6 +102,37 @@ public class AppSettingsManager {
     public var dailyAutoChangeCount: Int {
         get { checkAndResetDailyLimits(); return defaults.integer(forKey: "dailyAutoChangeCount") }
         set { defaults.set(newValue, forKey: "dailyAutoChangeCount"); defaults.synchronize() }
+    }
+
+    public var dailySwipeCount: Int {
+        get { checkAndResetDailyLimits(); return defaults.integer(forKey: "dailySwipeCount") }
+        set { defaults.set(newValue, forKey: "dailySwipeCount"); defaults.synchronize() }
+    }
+
+    public var dailyDuelCount: Int {
+        get { checkAndResetDailyLimits(); return defaults.integer(forKey: "dailyDuelCount") }
+        set { defaults.set(newValue, forKey: "dailyDuelCount"); defaults.synchronize() }
+    }
+}
+
+// MARK: - ProgressManager// MARK: - ProgressRequirements
+
+public struct ProgressRequirements {
+    public let requiredDailyTests: Int
+    public let requiredKnownWords: Int
+    public let examQuestionCount: Int
+    
+    public static func requirements(for level: CEFRLevel) -> ProgressRequirements {
+        switch level {
+        case .a1:
+            return ProgressRequirements(requiredDailyTests: 7, requiredKnownWords: 50, examQuestionCount: 20)
+        case .a2:
+            return ProgressRequirements(requiredDailyTests: 15, requiredKnownWords: 100, examQuestionCount: 35)
+        case .b1:
+            return ProgressRequirements(requiredDailyTests: 25, requiredKnownWords: 200, examQuestionCount: 50)
+        case .b2:
+            return ProgressRequirements(requiredDailyTests: 30, requiredKnownWords: 300, examQuestionCount: 60)
+        }
     }
 }
 
@@ -212,7 +255,7 @@ public final class ProgressManager {
          var p = progress
          // Bilinmiyor listesine ekle
          if !p.unknownWordIDs.contains(wordID) {
-             p.unknownWordIDs.append(wordID)
+              p.unknownWordIDs.append(wordID)
          }
          // Biliniyor listesinden çıkar
          p.knownWordIDs.removeAll { $0 == wordID }
@@ -256,15 +299,20 @@ public final class ProgressManager {
     }
     
     public func canTakeExam(for level: CEFRLevel) -> Bool {
-        let requiredDailyTests = 7
-        let requiredKnownWords = 50
+        guard level != .a1 else { return false }
+        guard let sourceLevel = level.previous else { return false }
         
-        let dailyTestCount = dailyTestsCount(for: level)
+        let req = ProgressRequirements.requirements(for: sourceLevel)
+        let dailyTestCount = dailyTestsCount(for: sourceLevel)
         
-        let levelWords = WordManager.shared.words(for: level).map { $0.id }
+        let levelWords = WordManager.shared.words(for: sourceLevel).map { $0.id }
         let knownLevelWordsCount = progress.knownWordIDs.filter { levelWords.contains($0) }.count
         
-        return dailyTestCount >= requiredDailyTests && knownLevelWordsCount >= requiredKnownWords
+        let earnedStars = progress.stars(for: sourceLevel)
+        
+        return dailyTestCount >= req.requiredDailyTests &&
+               knownLevelWordsCount >= req.requiredKnownWords &&
+               earnedStars >= 10
     }
 
     // MARK: Migration
@@ -280,7 +328,11 @@ public final class ProgressManager {
             learnedWordIDs: old.learnedWordIDs,
             quizScores: old.quizScores,
             unlockedLevels: [.a1, old.currentLevel].removingDuplicates(),
-            levelStars: [:]
+            levelStars: [:],
+            knownWordIDs: old.learnedWordIDs,
+            unknownWordIDs: [],
+            dailyTestsCompleted: [:],
+            lastDailyTestDate: nil
         )
         progress = migrated
     }

@@ -12,13 +12,17 @@
 		1741A1C88238FF501849C059 /* AppSettingsManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48ADE902E7313018B40E8D98 /* AppSettingsManager.swift */; };
 		24C568CF95F1D7EE958FBD40 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = B68181A42BB5AEB2BF3DB7C9 /* Models.swift */; };
 		2505ABC140A2A3957F625ED4 /* QuizManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C274FBE502836260D63D5003 /* QuizManager.swift */; };
+		2870F4B12F020BB2B6DD8850 /* WordMatchBattleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36C2894231451D43CD357D60 /* WordMatchBattleView.swift */; };
 		2DF7CF1CBA8B1986307C5894 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF595F60F4A7BD419CF7612C /* SettingsView.swift */; };
 		3095306C5C22E2B3E4EF40A8 /* LibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 765225776087781F82E8F166 /* LibraryView.swift */; };
 		3152016AD05D68A88CAA96A4 /* LevelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 07081167FF6E88FDDAA508AF /* LevelView.swift */; };
 		39CABB61138F3003CCBBD23A /* SpeechManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4030C79C4E1F895D2A4FFC6A /* SpeechManager.swift */; };
 		3C7C8BFE8D3074E32CA94BC3 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87D987419F55CE6637A5077C /* Theme.swift */; };
 		457C9B86FACED05730CB60BF /* WidgetIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB36FE91CFB1A5BDAEADFEE /* WidgetIntents.swift */; };
+		4CA844BE734AA26D9D685754 /* StoreKitManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C61413B11B4D00938E9745D /* StoreKitManager.swift */; };
 		4D1A38CCF0A8F6DBE743CE9E /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = B68181A42BB5AEB2BF3DB7C9 /* Models.swift */; };
+		526DCC15E7281F53A4033403 /* Products.storekit in Resources */ = {isa = PBXBuildFile; fileRef = 40CAB41FD2A5BA300B917772 /* Products.storekit */; };
+		5FB0D438003D3A8E228F515E /* DuelsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6E56E78C049A6FB272AC720 /* DuelsView.swift */; };
 		6BBE221E7F05749F6BE1B7C0 /* DailyWordWidgetExtension.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2ED2591F0ED823B0F9E5FEEE /* DailyWordWidgetExtension.swift */; };
 		71AB66DBC88795C3998EE3C9 /* AppSettingsManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48ADE902E7313018B40E8D98 /* AppSettingsManager.swift */; };
 		76EFC1A891959F1DE0AD5981 /* SpeechManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4030C79C4E1F895D2A4FFC6A /* SpeechManager.swift */; };
@@ -29,6 +33,7 @@
 		934F9E708532ADCD658D0B29 /* words.json in Resources */ = {isa = PBXBuildFile; fileRef = 9078ED35B57442E650049482 /* words.json */; };
 		939F0F78DFC530B6E3A6C110 /* words.json in Resources */ = {isa = PBXBuildFile; fileRef = 9078ED35B57442E650049482 /* words.json */; };
 		94728C86635F700A579896FF /* Secrets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F99EFBF331E16EF7A678FF3 /* Secrets.swift */; };
+		AD3A6D25A562C7A0229F3036 /* PremiumPaywallView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17A8209DCEDCBA05AD8C2999 /* PremiumPaywallView.swift */; };
 		AF477DD9C206A07E13B73F4D /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FB62FB35EB24FE3F2241755 /* ContentView.swift */; };
 		B05727C496E93ECC8B2165DB /* WordManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = EFEA3C3ADEFC215188CC2F7A /* WordManager.swift */; };
 		BB49C8C512BC00DFC10183BF /* DailyWordWidgetApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9BE2CCF512001AA08E4AD154 /* DailyWordWidgetApp.swift */; };
@@ -36,10 +41,12 @@
 		D18DFCD3524D8DC533769BEF /* ProgressManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5188E1638851233CF91D9035 /* ProgressManager.swift */; };
 		D8491FCB3D06DA398B55CBA4 /* QuizManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C274FBE502836260D63D5003 /* QuizManager.swift */; };
 		DEBC7C331D06096AF04D00F6 /* AuthManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27C13148B4B060112C9E380E /* AuthManager.swift */; };
+		E02519DAB77BC5ACE8A1AF8C /* Products.storekit in Resources */ = {isa = PBXBuildFile; fileRef = 40CAB41FD2A5BA300B917772 /* Products.storekit */; };
 		E10162946EC6292549402157 /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 62D09250A0FBAFDFF6C7CC44 /* LoginView.swift */; };
 		E438BC560EBD6D09ED14DFB6 /* QuizView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 014CFD3FF4F51DAF1B1D2D54 /* QuizView.swift */; };
 		E8706BA2A9C0F9197A08B77C /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = 43048CC5DB3213529E6E6F24 /* Supabase */; };
 		EA59D6B4A4A7118E3214F8D5 /* EmojiProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = A860DF62B549AC8D848254A4 /* EmojiProvider.swift */; };
+		ECCEDE8B6846BB740D55DE18 /* SocialManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1352CB4B2BAF2E109A287CAD /* SocialManager.swift */; };
 		F9C3D694CD08506D87614C45 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87D987419F55CE6637A5077C /* Theme.swift */; };
 		FFDFD7CC57B3B1C7715FEE40 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E916671B70D7EE3CA1333FE9 /* HomeView.swift */; };
 /* End PBXBuildFile section */
@@ -72,14 +79,19 @@
 		014CFD3FF4F51DAF1B1D2D54 /* QuizView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuizView.swift; sourceTree = "<group>"; };
 		07081167FF6E88FDDAA508AF /* LevelView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LevelView.swift; sourceTree = "<group>"; };
 		0FB62FB35EB24FE3F2241755 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		1352CB4B2BAF2E109A287CAD /* SocialManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SocialManager.swift; sourceTree = "<group>"; };
+		17A8209DCEDCBA05AD8C2999 /* PremiumPaywallView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PremiumPaywallView.swift; sourceTree = "<group>"; };
 		27C13148B4B060112C9E380E /* AuthManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthManager.swift; sourceTree = "<group>"; };
 		2ED2591F0ED823B0F9E5FEEE /* DailyWordWidgetExtension.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyWordWidgetExtension.swift; sourceTree = "<group>"; };
+		36C2894231451D43CD357D60 /* WordMatchBattleView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WordMatchBattleView.swift; sourceTree = "<group>"; };
 		3AB4EC30FBCEC1B801BB9C59 /* DailyWordWidgetExtension.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = DailyWordWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		3F99EFBF331E16EF7A678FF3 /* Secrets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Secrets.swift; sourceTree = "<group>"; };
 		4030C79C4E1F895D2A4FFC6A /* SpeechManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeechManager.swift; sourceTree = "<group>"; };
+		40CAB41FD2A5BA300B917772 /* Products.storekit */ = {isa = PBXFileReference; path = Products.storekit; sourceTree = "<group>"; };
 		48ADE902E7313018B40E8D98 /* AppSettingsManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettingsManager.swift; sourceTree = "<group>"; };
 		5188E1638851233CF91D9035 /* ProgressManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProgressManager.swift; sourceTree = "<group>"; };
 		5888F75B186351A95FEF6D8B /* SupabaseManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupabaseManager.swift; sourceTree = "<group>"; };
+		5C61413B11B4D00938E9745D /* StoreKitManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoreKitManager.swift; sourceTree = "<group>"; };
 		62D09250A0FBAFDFF6C7CC44 /* LoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginView.swift; sourceTree = "<group>"; };
 		765225776087781F82E8F166 /* LibraryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryView.swift; sourceTree = "<group>"; };
 		83DFCAF1852CED539EBEB83F /* DailyWordWidget.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = DailyWordWidget.entitlements; sourceTree = "<group>"; };
@@ -93,6 +105,7 @@
 		B68181A42BB5AEB2BF3DB7C9 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
 		C274FBE502836260D63D5003 /* QuizManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuizManager.swift; sourceTree = "<group>"; };
 		D0A13C5D7792BF257D9E5A1B /* DailyWordWidgetExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = DailyWordWidgetExtension.entitlements; sourceTree = "<group>"; };
+		D6E56E78C049A6FB272AC720 /* DuelsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DuelsView.swift; sourceTree = "<group>"; };
 		E916671B70D7EE3CA1333FE9 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
 		EFEA3C3ADEFC215188CC2F7A /* WordManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WordManager.swift; sourceTree = "<group>"; };
 		FAEA0EF3F011F60FD527BC36 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
@@ -126,6 +139,7 @@
 				48ADE902E7313018B40E8D98 /* AppSettingsManager.swift */,
 				A860DF62B549AC8D848254A4 /* EmojiProvider.swift */,
 				B68181A42BB5AEB2BF3DB7C9 /* Models.swift */,
+				40CAB41FD2A5BA300B917772 /* Products.storekit */,
 				5188E1638851233CF91D9035 /* ProgressManager.swift */,
 				C274FBE502836260D63D5003 /* QuizManager.swift */,
 				3F99EFBF331E16EF7A678FF3 /* Secrets.swift */,
@@ -154,13 +168,18 @@
 				0FB62FB35EB24FE3F2241755 /* ContentView.swift */,
 				83DFCAF1852CED539EBEB83F /* DailyWordWidget.entitlements */,
 				9BE2CCF512001AA08E4AD154 /* DailyWordWidgetApp.swift */,
+				D6E56E78C049A6FB272AC720 /* DuelsView.swift */,
 				E916671B70D7EE3CA1333FE9 /* HomeView.swift */,
 				07081167FF6E88FDDAA508AF /* LevelView.swift */,
 				765225776087781F82E8F166 /* LibraryView.swift */,
 				62D09250A0FBAFDFF6C7CC44 /* LoginView.swift */,
+				17A8209DCEDCBA05AD8C2999 /* PremiumPaywallView.swift */,
 				014CFD3FF4F51DAF1B1D2D54 /* QuizView.swift */,
 				AF595F60F4A7BD419CF7612C /* SettingsView.swift */,
+				1352CB4B2BAF2E109A287CAD /* SocialManager.swift */,
+				5C61413B11B4D00938E9745D /* StoreKitManager.swift */,
 				5888F75B186351A95FEF6D8B /* SupabaseManager.swift */,
+				36C2894231451D43CD357D60 /* WordMatchBattleView.swift */,
 			);
 			path = App;
 			sourceTree = "<group>";
@@ -257,6 +276,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				526DCC15E7281F53A4033403 /* Products.storekit in Resources */,
 				934F9E708532ADCD658D0B29 /* words.json in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -265,6 +285,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				E02519DAB77BC5ACE8A1AF8C /* Products.storekit in Resources */,
 				939F0F78DFC530B6E3A6C110 /* words.json in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -280,22 +301,27 @@
 				DEBC7C331D06096AF04D00F6 /* AuthManager.swift in Sources */,
 				AF477DD9C206A07E13B73F4D /* ContentView.swift in Sources */,
 				BB49C8C512BC00DFC10183BF /* DailyWordWidgetApp.swift in Sources */,
+				5FB0D438003D3A8E228F515E /* DuelsView.swift in Sources */,
 				EA59D6B4A4A7118E3214F8D5 /* EmojiProvider.swift in Sources */,
 				FFDFD7CC57B3B1C7715FEE40 /* HomeView.swift in Sources */,
 				3152016AD05D68A88CAA96A4 /* LevelView.swift in Sources */,
 				3095306C5C22E2B3E4EF40A8 /* LibraryView.swift in Sources */,
 				E10162946EC6292549402157 /* LoginView.swift in Sources */,
 				24C568CF95F1D7EE958FBD40 /* Models.swift in Sources */,
+				AD3A6D25A562C7A0229F3036 /* PremiumPaywallView.swift in Sources */,
 				D18DFCD3524D8DC533769BEF /* ProgressManager.swift in Sources */,
 				D8491FCB3D06DA398B55CBA4 /* QuizManager.swift in Sources */,
 				E438BC560EBD6D09ED14DFB6 /* QuizView.swift in Sources */,
 				918AD068515A406BB7F1C775 /* Secrets.swift in Sources */,
 				2DF7CF1CBA8B1986307C5894 /* SettingsView.swift in Sources */,
+				ECCEDE8B6846BB740D55DE18 /* SocialManager.swift in Sources */,
 				76EFC1A891959F1DE0AD5981 /* SpeechManager.swift in Sources */,
+				4CA844BE734AA26D9D685754 /* StoreKitManager.swift in Sources */,
 				1635C853BB2B5B1220F74A64 /* SupabaseManager.swift in Sources */,
 				3C7C8BFE8D3074E32CA94BC3 /* Theme.swift in Sources */,
 				457C9B86FACED05730CB60BF /* WidgetIntents.swift in Sources */,
 				10784F49BE46944922A39EFB /* WordManager.swift in Sources */,
+				2870F4B12F020BB2B6DD8850 /* WordMatchBattleView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

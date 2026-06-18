@@ -43,3 +43,13 @@ targets:
       properties:
         NSExtension:
           NSExtensionPointIdentifier: com.apple.widgetkit-extension
+
+schemes:
+  DailyWordWidget:
+    build:
+      targets:
+        DailyWordWidget: [run, test, profile, analyze, archive]
+  DailyWordWidgetExtension:
+    build:
+      targets:
+        DailyWordWidgetExtension: [run, test, profile, analyze, archive]

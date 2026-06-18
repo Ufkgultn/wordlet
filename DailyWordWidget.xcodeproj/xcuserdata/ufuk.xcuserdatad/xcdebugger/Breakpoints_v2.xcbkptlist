@@ -18,6 +18,36 @@
             endingLineNumber = "132"
             landmarkName = "UserProgress"
             landmarkType = "14">
+            <Locations>
+               <Location
+                  uuid = "75CF5DCA-8471-485F-ABBF-EC7825F5A3FA - f4d21612c91d4d5c"
+                  shouldBeEnabled = "Yes"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "one-time initialization function for defaultSettings"
+                  moduleName = "DailyWordWidget.debug.dylib"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/ufuk/Desktop/DailyWordWidget/Shared/Models.swift"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "132"
+                  endingLineNumber = "132">
+               </Location>
+               <Location
+                  uuid = "75CF5DCA-8471-485F-ABBF-EC7825F5A3FA - 8704ff6c12fb32cb"
+                  shouldBeEnabled = "Yes"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "DailyWordWidget.AppSettings.defaultSettings.unsafeMutableAddressor : DailyWordWidget.AppSettings"
+                  moduleName = "DailyWordWidget.debug.dylib"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/ufuk/Desktop/DailyWordWidget/Shared/Models.swift"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "132"
+                  endingLineNumber = "132">
+               </Location>
+            </Locations>
          </BreakpointContent>
       </BreakpointProxy>
    </Breakpoints>

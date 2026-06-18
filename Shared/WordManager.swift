@@ -25,13 +25,25 @@ public class WordManager {
             let data = try Data(contentsOf: url)
             let decoded = try JSONDecoder().decode([Word].self, from: data)
             self.allWords = decoded.map { word in
-                let examples = generatedExamples(for: word.english, turkishMeaning: word.turkish)
+                let isDummy = word.example.contains("I am learning the word") || word.example.isEmpty
+                let finalExample: String
+                let finalExampleTr: String
+                
+                if !isDummy {
+                    finalExample = word.example
+                    finalExampleTr = word.exampleTurkish ?? ""
+                } else {
+                    let fallback = generatedExamples(for: word.english, turkishMeaning: word.turkish)
+                    finalExample = fallback.english
+                    finalExampleTr = fallback.turkish
+                }
+                
                 return Word(
                     id: word.id,
                     english: word.english,
                     turkish: word.turkish,
-                    example: examples.english,
-                    exampleTurkish: examples.turkish,
+                    example: finalExample,
+                    exampleTurkish: finalExampleTr,
                     level: word.level,
                     imageURL: word.imageURL,
                     audioURL: word.audioURL

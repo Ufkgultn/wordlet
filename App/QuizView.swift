@@ -44,7 +44,7 @@ struct QuizView: View {
 
     var body: some View {
         ZStack {
-            Theme.backgroundGradient.ignoresSafeArea()
+            AppBackground()
 
             if !isStarted {
                 selectionScreen
@@ -91,15 +91,13 @@ struct QuizView: View {
     private var selectionScreen: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
-                Text("Alıştırma Seç")
+                Text("Alıştırmalar")
                     .font(.system(size: 32, weight: .bold, design: .rounded))
                     .foregroundColor(.white)
                     .padding(.top, 40)
 
                 ForEach(CEFRLevel.allCases) { level in
-                    if ProgressManager.shared.progress.isUnlocked(level) {
-                        levelPracticeSection(for: level)
-                    }
+                    levelPracticeSection(for: level)
                 }
             }
             .padding(.horizontal, 24)
@@ -108,43 +106,89 @@ struct QuizView: View {
     }
 
     private func levelPracticeSection(for level: CEFRLevel) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text(level.description)
-                .font(.headline)
-                .foregroundColor(Theme.textSecondary)
+        let isUnlocked = ProgressManager.shared.progress.isUnlocked(level)
+        
+        return VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text(level.description)
+                    .font(.headline)
+                    .foregroundColor(isUnlocked ? Theme.textSecondary : .white.opacity(0.4))
+                
+                Spacer()
+                
+                if !isUnlocked {
+                    HStack(spacing: 4) {
+                        Image(systemName: "lock.fill")
+                            .font(.caption)
+                        Text("Kilitli")
+                            .font(.caption.bold())
+                    }
+                    .foregroundColor(.white.opacity(0.4))
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(Capsule().fill(Color.white.opacity(0.06)))
+                }
+            }
 
-            HStack(spacing: 12) {
-                ForEach(1...3, id: \.self) { star in
-                    starButton(level: level, star: star)
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 10), count: 5), spacing: 12) {
+                ForEach(1...10, id: \.self) { star in
+                    starButton(level: level, star: star, isUnlocked: isUnlocked)
                 }
             }
         }
         .padding(16)
         .background(RoundedRectangle(cornerRadius: 20).fill(.ultraThinMaterial))
+        .opacity(isUnlocked ? 1 : 0.6)
     }
 
-    private func starButton(level: CEFRLevel, star: Int) -> some View {
-        let isAchieved = ProgressManager.shared.progress.stars(for: level) >= star
+    private func starButton(level: CEFRLevel, star: Int, isUnlocked: Bool) -> some View {
+        let currentStars = ProgressManager.shared.progress.stars(for: level)
+        let isAchieved = currentStars >= star
+        
+        // Bu alt seviye aktif mi?
+        let isSubLevelUnlocked = isUnlocked && (star == 1 || currentStars >= (star - 1))
+        let questionCount = star <= 3 ? 10 : star <= 7 ? 15 : 20
+        
         return Button(action: {
+            guard isSubLevelUnlocked else { return }
             targetLevel = level
             starLevel = star
             withAnimation { isStarted = true }
             startQuiz()
         }) {
-            VStack(spacing: 8) {
-                Image(systemName: isAchieved ? "star.fill" : "star")
-                    .font(.system(size: 24))
-                    .foregroundColor(isAchieved ? .yellow : .white.opacity(0.3))
+            VStack(spacing: 4) {
+                ZStack {
+                    Circle()
+                        .fill(isSubLevelUnlocked ? (isAchieved ? Color.yellow.opacity(0.15) : Color.white.opacity(0.08)) : Color.white.opacity(0.03))
+                        .frame(width: 44, height: 44)
+                        .overlay(
+                            Circle()
+                                .stroke(isSubLevelUnlocked && isAchieved ? Color.yellow.opacity(0.6) : Color.clear, lineWidth: 1.5)
+                        )
+                    
+                    if isSubLevelUnlocked {
+                        if isAchieved {
+                            Image(systemName: "star.fill")
+                                .font(.system(size: 16))
+                                .foregroundColor(.yellow)
+                        } else {
+                            Text("\(star)")
+                                .font(.system(size: 14, weight: .bold, design: .rounded))
+                                .foregroundColor(.white)
+                        }
+                    } else {
+                        Image(systemName: "lock.fill")
+                            .font(.system(size: 14))
+                            .foregroundColor(.white.opacity(0.25))
+                    }
+                }
                 
-                Text("\(star * 5 + 5) Soru")
-                    .font(.caption2.bold())
-                    .foregroundColor(.white.opacity(0.6))
+                Text("\(questionCount)S")
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundColor(isSubLevelUnlocked ? .white.opacity(0.6) : .white.opacity(0.25))
             }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 16)
-            .background(RoundedRectangle(cornerRadius: 12).fill(Color.white.opacity(0.05)))
-            .overlay(RoundedRectangle(cornerRadius: 12).stroke(isAchieved ? Color.yellow.opacity(0.3) : Color.clear, lineWidth: 1))
         }
+        .disabled(!isSubLevelUnlocked)
     }
 
     private var emptyState: some View {
@@ -281,7 +325,7 @@ struct QuizView: View {
 
     private var resultSheet: some View {
         ZStack {
-            Theme.backgroundGradient.ignoresSafeArea()
+            AppBackground()
 
             VStack(spacing: 28) {
                 Spacer()

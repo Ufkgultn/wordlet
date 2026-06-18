@@ -1,0 +1,120 @@
+{
+  "identifier" : "E2B7A8C8",
+  "nonRenewingSubscriptions" : [
+
+  ],
+  "products" : [
+    {
+      "displayVersion" : 1,
+      "familyShareable" : false,
+      "internalID" : "3A7D6F8C",
+      "localizations" : [
+        {
+          "description" : "Tüm özelliklere ömür boyu sınırsız erişim",
+          "displayName" : "Ömür Boyu Premium",
+          "locale" : "tr"
+        },
+        {
+          "description" : "Lifetime unlimited access to all features",
+          "displayName" : "Lifetime Premium",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "com.ufuk.DailyWordWidget.lifetime",
+      "referenceName" : "Lifetime Premium",
+      "type" : "NonConsumable"
+    }
+  ],
+  "settings" : {
+    "_failTransactionsEnabled" : false,
+    "_locale" : "tr",
+    "_storefront" : "TUR",
+    "_storeKitErrors" : [
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Load Products"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Purchase"
+      }
+    ]
+  },
+  "subscriptionGroups" : [
+    {
+      "id" : "7E4A8F2C",
+      "localizations" : [
+
+      ],
+      "name" : "Premium Subscriptions",
+      "subscriptions" : [
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayVersion" : 4,
+          "familyShareable" : false,
+          "groupNumber" : 1,
+          "internalID" : "B2A7E8D6",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "Her ay yenilenen premium üyelik",
+              "displayName" : "Aylık Premium",
+              "locale" : "tr"
+            },
+            {
+              "description" : "Monthly auto-renewing premium subscription",
+              "displayName" : "Monthly Premium",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "com.ufuk.DailyWordWidget.monthly",
+          "recurringSubscriptionPeriod" : "P1M",
+          "referenceName" : "Monthly Premium",
+          "subscriptionGroupID" : "7E4A8F2C",
+          "type" : "AutoRenewable"
+        },
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayVersion" : 4,
+          "familyShareable" : false,
+          "groupNumber" : 2,
+          "internalID" : "C3B8F9E7",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "Her yıl yenilenen indirimli premium üyelik",
+              "displayName" : "Yıllık Premium",
+              "locale" : "tr"
+            },
+            {
+              "description" : "Yearly auto-renewing premium subscription with discount",
+              "displayName" : "Yearly Premium",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "com.ufuk.DailyWordWidget.yearly",
+          "recurringSubscriptionPeriod" : "P1Y",
+          "referenceName" : "Yearly Premium",
+          "subscriptionGroupID" : "7E4A8F2C",
+          "type" : "AutoRenewable"
+        }
+      ]
+    }
+  ],
+  "version" : {
+    "major" : 3,
+    "minor" : 0
+  }
+}

@@ -10,14 +10,9 @@ public struct NextWordIntent: AppIntent {
     public func perform() async throws -> some IntentResult {
         let manager = AppSettingsManager.shared
         
-        // Premium değilse ve limit (5) dolduysa değiştirme (sessizce dön)
-        if !manager.isPremium && manager.dailyManualChangeCount >= 5 {
+        // Sadece premium kullanıcıların kelimeyi değiştirmesine izin ver
+        guard manager.isPremium else {
             return .result()
-        }
-        
-        // Değişim yap ve kotayı artır
-        if !manager.isPremium {
-            manager.dailyManualChangeCount += 1
         }
         
         manager.forceNextWord()

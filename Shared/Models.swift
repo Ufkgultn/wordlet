@@ -18,6 +18,15 @@ public enum CEFRLevel: String, Codable, CaseIterable, Identifiable {
         }
     }
 
+    public var previous: CEFRLevel? {
+        switch self {
+        case .a1: return nil
+        case .a2: return .a1
+        case .b1: return .a2
+        case .b2: return .b1
+        }
+    }
+
     public var displayName: String { rawValue }
 
     public var description: String {
@@ -160,5 +169,23 @@ public struct UserProgress: Codable {
 
     public func stars(for level: CEFRLevel) -> Int {
         levelStars[level.rawValue] ?? 0
+    }
+}
+
+public struct PublicProfile: Codable, Identifiable, Hashable {
+    public var id: String
+    public var username: String
+    public var displayName: String
+    public var currentLevel: String
+    public var xp: Int
+    public var avatarEmoji: String
+    
+    public init(id: String, username: String, displayName: String, currentLevel: String, xp: Int, avatarEmoji: String) {
+        self.id = id
+        self.username = username
+        self.displayName = displayName
+        self.currentLevel = currentLevel
+        self.xp = xp
+        self.avatarEmoji = avatarEmoji
     }
 }

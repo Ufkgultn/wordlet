@@ -53,11 +53,38 @@ public struct NeumorphismModifier: ViewModifier {
     }
 }
 
+// MARK: - Dynamic App Background
+public struct AppBackground: View {
+    @AppStorage("themeMode") private var themeMode: String = "dark"
+    @Environment(\.colorScheme) var colorScheme
+    
+    public init() {}
+    
+    public var body: some View {
+        let isDark = themeMode == "dark" || (themeMode == "system" && colorScheme == .dark)
+        if isDark {
+            Color.black.ignoresSafeArea()
+        } else {
+            Theme.backgroundGradient.ignoresSafeArea()
+        }
+    }
+}
+
+public struct AppBackgroundModifier: ViewModifier {
+    public func body(content: Content) -> some View {
+        content
+            .background(AppBackground())
+    }
+}
+
 public extension View {
     func neumorphism() -> some View {
         self.modifier(NeumorphismModifier())
     }
     func glassCard(cornerRadius: CGFloat = 28) -> some View {
         self.modifier(GlassCardModifier(cornerRadius: cornerRadius))
+    }
+    func appBackground() -> some View {
+        self.modifier(AppBackgroundModifier())
     }
 }
