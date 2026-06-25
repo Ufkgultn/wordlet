@@ -202,8 +202,48 @@ struct WordMatchBattleView: View {
     // MARK: - Game Setup
     
     private func setupGame() {
-        let words = WordManager.shared.words(for: activeCEFRLevel).shuffled().prefix(totalPairs)
+        let allLevelWords = WordManager.shared.words(for: activeCEFRLevel)
         
+        // 1. Görülen kelimeleri tercih et (kullanıcı hiç görmediği kelimelerle düelloya girmesin)
+        let seenIDs = Set(WordManager.shared.seenWordIDs())
+        let seenWords = allLevelWords.filter { seenIDs.contains($0.id) }
+        let basePool = seenWords.count >= totalPairs ? seenWords : allLevelWords
+        
+        // 2. Duplikat Türkçe çevirileri filtrele (aynı Türkçe anlama sahip kelimeleri engelle)
+        //    Böylece "Large" ve "Big" aynı anda çıkıp ikisi de "Büyük" göstermez
+        let uniqueWords = filterDuplicateTranslations(from: basePool.shuffled())
+        
+        guard uniqueWords.count >= totalPairs else {
+            // Yeterli benzersiz kelime yoksa filtresiz devam et
+            let fallbackWords = allLevelWords.shuffled().prefix(totalPairs)
+            populateItems(from: Array(fallbackWords))
+            startTimers()
+            return
+        }
+        
+        let selectedWords = Array(uniqueWords.prefix(totalPairs))
+        populateItems(from: selectedWords)
+        startTimers()
+    }
+    
+    /// Aynı Türkçe çeviriye sahip kelimeleri filtreler, her çeviriden sadece birini tutar
+    private func filterDuplicateTranslations(from words: [Word]) -> [Word] {
+        var seenTranslations = Set<String>()
+        var result: [Word] = []
+        
+        for word in words {
+            let normalizedTurkish = word.turkish.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+            if !seenTranslations.contains(normalizedTurkish) {
+                seenTranslations.insert(normalizedTurkish)
+                result.append(word)
+            }
+        }
+        
+        return result
+    }
+    
+    /// Seçilen kelimelerle sol ve sağ sütunları oluşturur
+    private func populateItems(from words: [Word]) {
         var left: [MatchItem] = []
         var right: [MatchItem] = []
         
@@ -214,8 +254,11 @@ struct WordMatchBattleView: View {
         
         self.leftItems = left.shuffled()
         self.rightItems = right.shuffled()
-        
-        // Timer
+    }
+    
+    /// Timer'ları başlatır
+    private func startTimers() {
+        // Oyun süresi timer'ı
         timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
             if timeRemaining > 0 {
                 timeRemaining -= 1
