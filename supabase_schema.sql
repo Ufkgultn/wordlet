@@ -5,17 +5,27 @@ CREATE TABLE IF NOT EXISTS public.profiles (
     display_name TEXT NOT NULL,
     current_level TEXT DEFAULT 'A1',
     xp INTEGER DEFAULT 0,
+    matches_won INTEGER DEFAULT 0,
+    matches_played INTEGER DEFAULT 0,
     avatar_emoji TEXT DEFAULT '🚀',
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
+
+-- Ensure columns exist if table was already created earlier
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS matches_won INTEGER DEFAULT 0;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS matches_played INTEGER DEFAULT 0;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS avatar_emoji TEXT DEFAULT '🚀';
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS current_level TEXT DEFAULT 'A1';
 
 -- 2. Enable Row Level Security (RLS) on Profiles
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 
 -- 3. Create RLS Policies for Profiles
+DROP POLICY IF EXISTS "Public profiles are viewable by everyone" ON public.profiles;
 CREATE POLICY "Public profiles are viewable by everyone" 
 ON public.profiles FOR SELECT USING (true);
 
+DROP POLICY IF EXISTS "Users can insert/update their own profile" ON public.profiles;
 CREATE POLICY "Users can insert/update their own profile" 
 ON public.profiles FOR ALL USING (auth.uid() = id);
 
@@ -33,39 +43,106 @@ CREATE TABLE IF NOT EXISTS public.friendships (
 ALTER TABLE public.friendships ENABLE ROW LEVEL SECURITY;
 
 -- 6. Create RLS Policies for Friendships
+DROP POLICY IF EXISTS "Users can view their own friendships" ON public.friendships;
 CREATE POLICY "Users can view their own friendships" 
 ON public.friendships FOR SELECT 
 USING (auth.uid() = sender_id OR auth.uid() = receiver_id);
 
+DROP POLICY IF EXISTS "Users can insert friendships where they are the sender" ON public.friendships;
 CREATE POLICY "Users can insert friendships where they are the sender" 
 ON public.friendships FOR INSERT 
 WITH CHECK (auth.uid() = sender_id);
 
+DROP POLICY IF EXISTS "Users can update/delete friendships they belong to" ON public.friendships;
 CREATE POLICY "Users can update/delete friendships they belong to" 
 ON public.friendships FOR UPDATE 
 USING (auth.uid() = sender_id OR auth.uid() = receiver_id);
 
+DROP POLICY IF EXISTS "Users can delete friendships they belong to" ON public.friendships;
 CREATE POLICY "Users can delete friendships they belong to" 
 ON public.friendships FOR DELETE 
 USING (auth.uid() = sender_id OR auth.uid() = receiver_id);
 
--- 7. Automatically create profile row when user signs up
+-- 7. Create Matches (1v1 Duels / Quiz Matchmaking) Table
+CREATE TABLE IF NOT EXISTS public.matches (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    room_code TEXT,
+    player1_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+    player2_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
+    player1_name TEXT NOT NULL,
+    player2_name TEXT,
+    player1_avatar TEXT DEFAULT '🚀',
+    player2_avatar TEXT DEFAULT '🤖',
+    player1_score INTEGER DEFAULT 0,
+    player2_score INTEGER DEFAULT 0,
+    status TEXT DEFAULT 'waiting' CHECK (status IN ('waiting', 'in_progress', 'completed', 'cancelled')),
+    winner_id UUID REFERENCES public.profiles(id),
+    mode TEXT DEFAULT 'random' CHECK (mode IN ('random', 'friend', 'room', 'bot')),
+    level TEXT DEFAULT 'A1',
+    word_ids TEXT[] DEFAULT '{}',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- 8. Enable RLS on Matches
+ALTER TABLE public.matches ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users can view open or participating matches" ON public.matches;
+CREATE POLICY "Users can view open or participating matches" 
+ON public.matches FOR SELECT 
+USING (status = 'waiting' OR auth.uid() = player1_id OR auth.uid() = player2_id);
+
+DROP POLICY IF EXISTS "Users can create matches" ON public.matches;
+CREATE POLICY "Users can create matches" 
+ON public.matches FOR INSERT 
+WITH CHECK (auth.uid() = player1_id);
+
+DROP POLICY IF EXISTS "Participants can update match" ON public.matches;
+CREATE POLICY "Participants can update match" 
+ON public.matches FOR UPDATE 
+USING (auth.uid() = player1_id OR auth.uid() = player2_id);
+
+-- 9. Automatically create profile row when user signs up
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS trigger AS $$
 BEGIN
-  INSERT INTO public.profiles (id, username, display_name, current_level, xp, avatar_emoji)
+  INSERT INTO public.profiles (id, username, display_name, current_level, xp, matches_won, matches_played, avatar_emoji)
   VALUES (
     new.id,
     lower(split_part(new.email, '@', 1)) || '_' || floor(random() * 1000)::text,
-    COALESCE(new.raw_user_meta_data->>'first_name', 'Yeni') || ' ' || COALESCE(new.raw_user_meta_data->>'last_name', 'Kullanıcı'),
+    COALESCE(new.raw_user_meta_data->>'full_name', COALESCE(new.raw_user_meta_data->>'first_name', 'Yeni') || ' ' || COALESCE(new.raw_user_meta_data->>'last_name', 'Kullanıcı')),
     'A1',
     0,
+    0,
+    0,
     '🚀'
-  );
+  )
+  ON CONFLICT (id) DO NOTHING;
   RETURN new;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
-CREATE OR REPLACE TRIGGER on_auth_user_created
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
+-- 10. Enable Supabase Realtime for live multiplayer updates
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables 
+    WHERE pubname = 'supabase_realtime' AND tablename = 'matches'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.matches;
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables 
+    WHERE pubname = 'supabase_realtime' AND tablename = 'profiles'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.profiles;
+  END IF;
+END $$;
+
+

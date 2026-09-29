@@ -1,5 +1,6 @@
 import SwiftUI
 import WidgetKit
+import PhotosUI
 
 struct SettingsView: View {
     @EnvironmentObject var authManager: AuthManager
@@ -18,10 +19,16 @@ struct SettingsView: View {
     @State private var isIntervalExpanded = false
     
     // Profile Edit Mode
+    @State private var editFirstName = ""
+    @State private var editLastName = ""
     @State private var editUsername = ""
-    @State private var editDisplayName = ""
     @State private var editAvatarEmoji = "🚀"
+    @State private var selectedPhotoItem: PhotosPickerItem? = nil
+    @State private var selectedPhotoData: Data? = nil
+    @State private var avatarPickerMode = 0 // 0: Avatar Emojisi, 1: Galeri Fotoğrafı
     @State private var showSaveProfileSuccess = false
+    @State private var showLoginSheet = false
+    @State private var showDeleteAccountAlert = false
     
     let intervals = [
         (label: "5 Dakika", minutes: 5, icon: "timer"),
@@ -89,6 +96,9 @@ struct SettingsView: View {
         .onAppear {
             loadInitialSocialData()
         }
+        .sheet(isPresented: $showLoginSheet) {
+            LoginView()
+        }
     }
     
     // MARK: - Accordion Header
@@ -125,133 +135,329 @@ struct SettingsView: View {
     
     // MARK: - Section Content: Profile
     
+    private var fullNamePreview: String {
+        let full = "\(editFirstName) \(editLastName)".trimmingCharacters(in: .whitespaces)
+        return full.isEmpty ? "Profil İsmi" : full
+    }
+    
     private var profileSectionContent: some View {
-        VStack(spacing: 16) {
-            // Profile Card Preview
-            HStack(spacing: 16) {
-                ZStack {
-                    Circle()
-                        .fill(Theme.accent.opacity(0.15))
-                        .frame(width: 60, height: 60)
-                    Text(editAvatarEmoji)
-                        .font(.system(size: 32))
+        VStack(spacing: 20) {
+            // Guest or Not Logged In Warning Banner
+            if !authManager.isAuthenticated || authManager.isGuest {
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack(spacing: 10) {
+                        Image(systemName: "person.crop.circle.badge.plus")
+                            .font(.title2)
+                            .foregroundColor(Theme.accent)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(authManager.isGuest ? "Misafir Hesabı Kullanıyorsun" : "Giriş Yapılmadı")
+                                .font(.subheadline.bold())
+                                .foregroundColor(.white)
+                            Text("Puanlarını kaydetmek ve arkadaşlarınla yarışmak için oturum aç.")
+                                .font(.caption2)
+                                .foregroundColor(.white.opacity(0.6))
+                        }
+                    }
+                    Button(action: { showLoginSheet = true }) {
+                        Text("Giriş Yap / Hesap Oluştur (Google / Apple)")
+                            .font(.caption.bold())
+                            .foregroundColor(.black)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 10)
+                            .background(Capsule().fill(Theme.accent))
+                    }
                 }
+                .padding(14)
+                .background(RoundedRectangle(cornerRadius: 16).fill(Theme.accent.opacity(0.12)))
+            }
+
+            // 1. Live Profile Card Preview
+            HStack(spacing: 16) {
+                UserAvatarView(
+                    emoji: editAvatarEmoji,
+                    size: 74,
+                    customPhotoData: selectedPhotoData
+                )
                 
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(editDisplayName.isEmpty ? "Profil İsmi" : editDisplayName)
-                        .font(.headline)
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(fullNamePreview)
+                        .font(.system(size: 19, weight: .bold, design: .rounded))
                         .foregroundColor(.white)
+                        .lineLimit(1)
+                    
                     Text("@\(editUsername.isEmpty ? "kullanici" : editUsername)")
                         .font(.subheadline)
-                        .foregroundColor(.white.opacity(0.6))
+                        .foregroundColor(Theme.accent)
+                        .lineLimit(1)
+                    
+                    HStack(spacing: 6) {
+                        Text(socialManager.myProfile?.currentLevel ?? "A1")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundColor(.black)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(Capsule().fill(Theme.accent))
+                        
+                        Text("\(socialManager.myProfile?.xp ?? 0) XP")
+                            .font(.system(size: 10, weight: .semibold))
+                            .foregroundColor(.white.opacity(0.6))
+                    }
                 }
                 
                 Spacer()
             }
-            .padding(14)
-            .background(RoundedRectangle(cornerRadius: 14).fill(Color.white.opacity(0.04)))
+            .padding(16)
+            .background(
+                RoundedRectangle(cornerRadius: 20)
+                    .fill(Color.white.opacity(0.06))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 20)
+                            .stroke(Color.white.opacity(0.1), lineWidth: 1)
+                    )
+            )
             
-            // Input Fields
-            VStack(alignment: .leading, spacing: 6) {
-                Text("Kullanıcı Adı")
+            // 2. Avatar & Photo Mode Selector
+            VStack(alignment: .leading, spacing: 12) {
+                Text("PROFİL GÖRSELİ")
                     .font(.caption.bold())
-                    .foregroundColor(.white.opacity(0.5))
-                TextField("kullanici_adi", text: $editUsername)
-                    .textFieldStyle(.plain)
-                    .padding(12)
-                    .background(RoundedRectangle(cornerRadius: 12).fill(Color.white.opacity(0.08)))
-                    .foregroundColor(.white)
-                    .autocapitalization(.none)
-            }
-            
-            VStack(alignment: .leading, spacing: 6) {
-                Text("Görünen İsim")
-                    .font(.caption.bold())
-                    .foregroundColor(.white.opacity(0.5))
-                TextField("Ad Soyad", text: $editDisplayName)
-                    .textFieldStyle(.plain)
-                    .padding(12)
-                    .background(RoundedRectangle(cornerRadius: 12).fill(Color.white.opacity(0.08)))
-                    .foregroundColor(.white)
-            }
-            
-            VStack(alignment: .leading, spacing: 6) {
-                Text("Profil Emojisi Seç")
-                    .font(.caption.bold())
-                    .foregroundColor(.white.opacity(0.5))
+                    .foregroundColor(Theme.accent)
                 
-                HStack(spacing: 10) {
-                    ForEach(["🚀", "🦁", "🦊", "🐼", "🐨", "🐱", "🦉", "🦄"], id: \.self) { emoji in
-                        Button(action: {
-                            editAvatarEmoji = emoji
-                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                        }) {
-                            Text(emoji)
-                                .font(.title3)
-                                .padding(8)
-                                .background(Circle().fill(editAvatarEmoji == emoji ? Theme.accent.opacity(0.25) : Color.white.opacity(0.04)))
-                                .overlay(
-                                    Circle()
-                                        .stroke(editAvatarEmoji == emoji ? Theme.accent : Color.clear, lineWidth: 1.5)
-                                )
+                Picker("", selection: $avatarPickerMode) {
+                    Text("🎭 Hazır Avatar").tag(0)
+                    Text("📸 Özel Fotoğraf").tag(1)
+                }
+                .pickerStyle(.segmented)
+                
+                if avatarPickerMode == 0 {
+                    // 16 Modern Emoji Avatars in a 4-column Grid
+                    LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 10), count: 4), spacing: 10) {
+                        ForEach([
+                            "🚀", "🦁", "🦊", "🐼", 
+                            "🐨", "🐱", "🦉", "🦄", 
+                            "⚡️", "👑", "🎯", "💎", 
+                            "🐉", "🥷", "🐺", "🏆"
+                        ], id: \.self) { emoji in
+                            Button(action: {
+                                editAvatarEmoji = emoji
+                                selectedPhotoData = nil
+                                UserDefaults.standard.removeObject(forKey: "user_profile_photo_data")
+                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                            }) {
+                                Text(emoji)
+                                    .font(.title2)
+                                    .frame(maxWidth: .infinity)
+                                    .frame(height: 52)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 14)
+                                            .fill((editAvatarEmoji == emoji && selectedPhotoData == nil) ? Theme.accent.opacity(0.25) : Color.white.opacity(0.05))
+                                    )
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 14)
+                                            .stroke((editAvatarEmoji == emoji && selectedPhotoData == nil) ? Theme.accent : Color.white.opacity(0.08), lineWidth: 1.5)
+                                    )
+                            }
                         }
                     }
+                    .padding(.top, 4)
+                } else {
+                    // Custom Photo Selection via PhotosPicker
+                    VStack(spacing: 12) {
+                        PhotosPicker(selection: $selectedPhotoItem, matching: .images) {
+                            HStack(spacing: 8) {
+                                Image(systemName: "photo.badge.plus")
+                                    .font(.headline)
+                                Text(selectedPhotoData != nil ? "Fotoğrafı Değiştir" : "Galeriden Fotoğraf Seç")
+                                    .font(.subheadline.bold())
+                            }
+                            .foregroundColor(.black)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
+                            .background(Theme.accent)
+                            .cornerRadius(14)
+                        }
+                        
+                        if selectedPhotoData != nil {
+                            Button(action: {
+                                selectedPhotoData = nil
+                                selectedPhotoItem = nil
+                                UserDefaults.standard.removeObject(forKey: "user_profile_photo_data")
+                                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                            }) {
+                                HStack(spacing: 4) {
+                                    Image(systemName: "trash")
+                                    Text("Fotoğrafı Kaldır")
+                                }
+                                .font(.caption.bold())
+                                .foregroundColor(.red.opacity(0.9))
+                            }
+                        }
+                    }
+                    .padding(14)
+                    .background(RoundedRectangle(cornerRadius: 14).fill(Color.white.opacity(0.04)))
                 }
             }
+            .padding(16)
+            .background(RoundedRectangle(cornerRadius: 18).fill(Color.white.opacity(0.04)))
             
-            // Save Profile Button
+            // 3. Name, Surname & Username Fields
+            VStack(alignment: .leading, spacing: 14) {
+                Text("KİŞİSEL BİLGİLER")
+                    .font(.caption.bold())
+                    .foregroundColor(Theme.accent)
+                
+                // First Name and Last Name side by side
+                HStack(spacing: 12) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Ad")
+                            .font(.caption2.bold())
+                            .foregroundColor(.white.opacity(0.6))
+                        TextField("Adınız", text: $editFirstName)
+                            .textFieldStyle(.plain)
+                            .padding(12)
+                            .background(RoundedRectangle(cornerRadius: 12).fill(Color.white.opacity(0.08)))
+                            .foregroundColor(.white)
+                    }
+                    
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Soyad")
+                            .font(.caption2.bold())
+                            .foregroundColor(.white.opacity(0.6))
+                        TextField("Soyadınız", text: $editLastName)
+                            .textFieldStyle(.plain)
+                            .padding(12)
+                            .background(RoundedRectangle(cornerRadius: 12).fill(Color.white.opacity(0.08)))
+                            .foregroundColor(.white)
+                    }
+                }
+                
+                // Username field
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Kullanıcı Adı")
+                        .font(.caption2.bold())
+                        .foregroundColor(.white.opacity(0.6))
+                    
+                    HStack(spacing: 4) {
+                        Text("@")
+                            .foregroundColor(Theme.accent)
+                            .font(.headline.bold())
+                        
+                        TextField("kullanici_adi", text: $editUsername)
+                            .textFieldStyle(.plain)
+                            .foregroundColor(.white)
+                            .autocapitalization(.none)
+                            .disableAutocorrection(true)
+                    }
+                    .padding(12)
+                    .background(RoundedRectangle(cornerRadius: 12).fill(Color.white.opacity(0.08)))
+                }
+            }
+            .padding(16)
+            .background(RoundedRectangle(cornerRadius: 18).fill(Color.white.opacity(0.04)))
+            
+            // 4. Save Changes Button
             Button(action: {
                 Task {
+                    let combinedName = "\(editFirstName) \(editLastName)".trimmingCharacters(in: .whitespaces)
                     try? await socialManager.updateProfile(
                         username: editUsername,
-                        displayName: editDisplayName,
+                        displayName: combinedName.isEmpty ? "Kullanıcı" : combinedName,
                         avatarEmoji: editAvatarEmoji
                     )
+                    UINotificationFeedbackGenerator().notificationOccurred(.success)
                     withAnimation {
                         showSaveProfileSuccess = true
                     }
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-                        showSaveProfileSuccess = false
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                        withAnimation {
+                            showSaveProfileSuccess = false
+                        }
                     }
                 }
             }) {
-                HStack {
+                HStack(spacing: 8) {
                     if showSaveProfileSuccess {
                         Image(systemName: "checkmark.circle.fill")
-                        Text("Güncellendi!")
+                            .font(.headline)
+                        Text("Başarıyla Kaydedildi!")
+                            .font(.headline.bold())
                     } else {
-                        Text("Profili Güncelle")
+                        Image(systemName: "square.and.arrow.down.fill")
+                            .font(.subheadline)
+                        Text("Değişiklikleri Kaydet")
+                            .font(.headline.bold())
                     }
                 }
-                .font(.subheadline.bold())
                 .foregroundColor(.black)
-                .padding(.vertical, 12)
+                .padding(.vertical, 14)
                 .frame(maxWidth: .infinity)
-                .background(RoundedRectangle(cornerRadius: 12).fill(showSaveProfileSuccess ? Color.green : Theme.accent))
+                .background(
+                    RoundedRectangle(cornerRadius: 14)
+                        .fill(showSaveProfileSuccess ? Color.green : Theme.accent)
+                )
+                .shadow(color: (showSaveProfileSuccess ? Color.green : Theme.accent).opacity(0.3), radius: 8, x: 0, y: 4)
             }
             
             Divider().background(Color.white.opacity(0.1))
             
-            // Log Out Button
-            Button(action: {
-                Task {
-                    await authManager.logout()
+            // 5. Account Security: Log Out & App Store Compliant Delete Account
+            VStack(spacing: 10) {
+                Button(action: {
+                    Task {
+                        await authManager.logout()
+                    }
+                }) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "rectangle.portrait.and.arrow.right")
+                        Text("Oturumu Kapat")
+                    }
+                    .font(.subheadline.bold())
+                    .foregroundColor(.white.opacity(0.8))
+                    .padding(.vertical, 12)
+                    .frame(maxWidth: .infinity)
+                    .background(RoundedRectangle(cornerRadius: 12).fill(Color.white.opacity(0.08)))
                 }
-            }) {
-                HStack {
-                    Image(systemName: "rectangle.portrait.and.arrow.right")
-                    Text("Oturumu Kapat")
+                
+                Button(action: {
+                    showDeleteAccountAlert = true
+                }) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "trash")
+                        Text("Hesabımı ve Verilerimi Sil")
+                    }
+                    .font(.caption.bold())
+                    .foregroundColor(.red.opacity(0.85))
+                    .padding(.vertical, 10)
+                    .frame(maxWidth: .infinity)
                 }
-                .font(.subheadline.bold())
-                .foregroundColor(.red)
-                .padding(.vertical, 12)
-                .frame(maxWidth: .infinity)
-                .background(RoundedRectangle(cornerRadius: 12).fill(Color.red.opacity(0.12)))
             }
         }
         .padding(16)
-        .background(RoundedRectangle(cornerRadius: 16).fill(Color.white.opacity(0.04)))
+        .background(RoundedRectangle(cornerRadius: 20).fill(Color.white.opacity(0.03)))
+        .alert("Hesabını Silmek İstiyor musun?", isPresented: $showDeleteAccountAlert) {
+            Button("Vazgeç", role: .cancel) {}
+            Button("Hesabımı Sil", role: .destructive) {
+                Task {
+                    UserDefaults.standard.removeObject(forKey: "user_profile_photo_data")
+                    await authManager.logout()
+                }
+            }
+        } message: {
+            Text("Bu işlem geri alınamaz. Profiliniz, skorlarınız ve arkadaşlık bilgileriniz silinecektir.")
+        }
+        .onChange(of: selectedPhotoItem) { newItem in
+            Task {
+                if let data = try? await newItem?.loadTransferable(type: Data.self) {
+                    await MainActor.run {
+                        self.selectedPhotoData = data
+                        UserDefaults.standard.set(data, forKey: "user_profile_photo_data")
+                        self.avatarPickerMode = 1
+                        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                    }
+                }
+            }
+        }
     }
+    
     // MARK: - Section Content: Theme Selection
     
     private var themeSectionContent: some View {
@@ -338,8 +544,14 @@ struct SettingsView: View {
             await socialManager.loadProfileAndFriends()
             if let myP = socialManager.myProfile {
                 editUsername = myP.username
-                editDisplayName = myP.displayName
+                let parts = myP.displayName.components(separatedBy: " ")
+                editFirstName = parts.first ?? ""
+                editLastName = parts.dropFirst().joined(separator: " ")
                 editAvatarEmoji = myP.avatarEmoji
+            }
+            if let data = UserDefaults.standard.data(forKey: "user_profile_photo_data") {
+                selectedPhotoData = data
+                avatarPickerMode = 1
             }
         }
     }

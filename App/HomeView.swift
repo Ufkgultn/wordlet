@@ -10,6 +10,7 @@ struct HomeView: View {
     @State private var progress = ProgressManager.shared.progress
     @State private var showDailyTest = false
     @State private var showPaywall = false
+    @State private var showLoginSheet = false
 
     @StateObject private var socialManager = SocialManager.shared
 
@@ -92,6 +93,9 @@ struct HomeView: View {
         }) {
             PremiumPaywallView()
         }
+        .sheet(isPresented: $showLoginSheet) {
+            LoginView()
+        }
     }
 
     // MARK: - Floating Header
@@ -101,15 +105,39 @@ struct HomeView: View {
             HStack(spacing: 10) {
                 LevelBadge(level: currentLevel)
 
-                Text(avatarEmoji)
-                    .font(.system(size: 20))
-                
-                Text(displayName)
-                    .font(.system(size: 15, weight: .bold, design: .rounded))
-                    .foregroundColor(.white.opacity(0.95))
-                    .lineLimit(1)
+                Button {
+                    if !authManager.isAuthenticated || authManager.isGuest {
+                        showLoginSheet = true
+                    }
+                } label: {
+                    HStack(spacing: 8) {
+                        UserAvatarView(emoji: avatarEmoji, size: 26)
+                        
+                        Text(displayName)
+                            .font(.system(size: 15, weight: .bold, design: .rounded))
+                            .foregroundColor(.white.opacity(0.95))
+                            .lineLimit(1)
+                    }
+                }
+                .buttonStyle(.plain)
 
                 Spacer()
+
+                if !authManager.isAuthenticated || authManager.isGuest {
+                    Button {
+                        showLoginSheet = true
+                    } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: "person.crop.circle.badge.plus")
+                            Text("Giriş Yap")
+                        }
+                        .font(.caption.bold())
+                        .foregroundColor(.black)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(Capsule().fill(Theme.accent))
+                    }
+                }
 
                 Button {
                     showPaywall = true
@@ -119,12 +147,12 @@ struct HomeView: View {
                         .foregroundColor(isPremium ? .yellow : .white)
                         .padding(.horizontal, 10)
                         .padding(.vertical, 6)
-                        .glassEffect(.regular, in: Capsule())
+                        .background(.regularMaterial, in: Capsule())
                 }
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 10)
-            .glassEffect(.regular, in: Capsule())
+            .background(.regularMaterial, in: Capsule())
             .padding(.horizontal, 16)
 
             // Progress Bar (Known Words)

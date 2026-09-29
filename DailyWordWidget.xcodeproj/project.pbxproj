@@ -33,8 +33,10 @@
 		934F9E708532ADCD658D0B29 /* words.json in Resources */ = {isa = PBXBuildFile; fileRef = 9078ED35B57442E650049482 /* words.json */; };
 		939F0F78DFC530B6E3A6C110 /* words.json in Resources */ = {isa = PBXBuildFile; fileRef = 9078ED35B57442E650049482 /* words.json */; };
 		94728C86635F700A579896FF /* Secrets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F99EFBF331E16EF7A678FF3 /* Secrets.swift */; };
+		9D0D9F01860CAFEC0F8C27CD /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B28CB6925656D6B6F2BBED36 /* Assets.xcassets */; };
 		AD3A6D25A562C7A0229F3036 /* PremiumPaywallView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17A8209DCEDCBA05AD8C2999 /* PremiumPaywallView.swift */; };
 		AF477DD9C206A07E13B73F4D /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FB62FB35EB24FE3F2241755 /* ContentView.swift */; };
+		AFA49602D674EC8632A6A5D2 /* MatchManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 672EBC85B3A5880D0125ACB3 /* MatchManager.swift */; };
 		B05727C496E93ECC8B2165DB /* WordManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = EFEA3C3ADEFC215188CC2F7A /* WordManager.swift */; };
 		BB49C8C512BC00DFC10183BF /* DailyWordWidgetApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9BE2CCF512001AA08E4AD154 /* DailyWordWidgetApp.swift */; };
 		C759794D8158E4E71F3F90FF /* DailyWordWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 3AB4EC30FBCEC1B801BB9C59 /* DailyWordWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
@@ -93,6 +95,7 @@
 		5888F75B186351A95FEF6D8B /* SupabaseManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupabaseManager.swift; sourceTree = "<group>"; };
 		5C61413B11B4D00938E9745D /* StoreKitManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoreKitManager.swift; sourceTree = "<group>"; };
 		62D09250A0FBAFDFF6C7CC44 /* LoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginView.swift; sourceTree = "<group>"; };
+		672EBC85B3A5880D0125ACB3 /* MatchManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MatchManager.swift; sourceTree = "<group>"; };
 		765225776087781F82E8F166 /* LibraryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryView.swift; sourceTree = "<group>"; };
 		83DFCAF1852CED539EBEB83F /* DailyWordWidget.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = DailyWordWidget.entitlements; sourceTree = "<group>"; };
 		87D987419F55CE6637A5077C /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
@@ -102,10 +105,12 @@
 		ADB36FE91CFB1A5BDAEADFEE /* WidgetIntents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetIntents.swift; sourceTree = "<group>"; };
 		AF595F60F4A7BD419CF7612C /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		B0A07C97F758E26C188DB975 /* DailyWordWidget.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = DailyWordWidget.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		B28CB6925656D6B6F2BBED36 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		B68181A42BB5AEB2BF3DB7C9 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
 		C274FBE502836260D63D5003 /* QuizManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuizManager.swift; sourceTree = "<group>"; };
 		D0A13C5D7792BF257D9E5A1B /* DailyWordWidgetExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = DailyWordWidgetExtension.entitlements; sourceTree = "<group>"; };
 		D6E56E78C049A6FB272AC720 /* DuelsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DuelsView.swift; sourceTree = "<group>"; };
+		E8AEAE9E92C0A4C405A72496 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		E916671B70D7EE3CA1333FE9 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
 		EFEA3C3ADEFC215188CC2F7A /* WordManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WordManager.swift; sourceTree = "<group>"; };
 		FAEA0EF3F011F60FD527BC36 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
@@ -164,15 +169,18 @@
 		DB1DDCCC4493F7B70CB0F08E /* App */ = {
 			isa = PBXGroup;
 			children = (
+				B28CB6925656D6B6F2BBED36 /* Assets.xcassets */,
 				27C13148B4B060112C9E380E /* AuthManager.swift */,
 				0FB62FB35EB24FE3F2241755 /* ContentView.swift */,
 				83DFCAF1852CED539EBEB83F /* DailyWordWidget.entitlements */,
 				9BE2CCF512001AA08E4AD154 /* DailyWordWidgetApp.swift */,
 				D6E56E78C049A6FB272AC720 /* DuelsView.swift */,
 				E916671B70D7EE3CA1333FE9 /* HomeView.swift */,
+				E8AEAE9E92C0A4C405A72496 /* Info.plist */,
 				07081167FF6E88FDDAA508AF /* LevelView.swift */,
 				765225776087781F82E8F166 /* LibraryView.swift */,
 				62D09250A0FBAFDFF6C7CC44 /* LoginView.swift */,
+				672EBC85B3A5880D0125ACB3 /* MatchManager.swift */,
 				17A8209DCEDCBA05AD8C2999 /* PremiumPaywallView.swift */,
 				014CFD3FF4F51DAF1B1D2D54 /* QuizView.swift */,
 				AF595F60F4A7BD419CF7612C /* SettingsView.swift */,
@@ -246,6 +254,12 @@
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
+					5C9D7C24A53A70B717031CD3 = {
+						DevelopmentTeam = JZDSNA36C9;
+					};
+					F26021BB04DC8226ED61CC5A = {
+						DevelopmentTeam = JZDSNA36C9;
+					};
 				};
 			};
 			buildConfigurationList = B2582D8689611ACAEE8B49DE /* Build configuration list for PBXProject "DailyWordWidget" */;
@@ -285,6 +299,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				9D0D9F01860CAFEC0F8C27CD /* Assets.xcassets in Resources */,
 				E02519DAB77BC5ACE8A1AF8C /* Products.storekit in Resources */,
 				939F0F78DFC530B6E3A6C110 /* words.json in Resources */,
 			);
@@ -307,6 +322,7 @@
 				3152016AD05D68A88CAA96A4 /* LevelView.swift in Sources */,
 				3095306C5C22E2B3E4EF40A8 /* LibraryView.swift in Sources */,
 				E10162946EC6292549402157 /* LoginView.swift in Sources */,
+				AFA49602D674EC8632A6A5D2 /* MatchManager.swift in Sources */,
 				24C568CF95F1D7EE958FBD40 /* Models.swift in Sources */,
 				AD3A6D25A562C7A0229F3036 /* PremiumPaywallView.swift in Sources */,
 				D18DFCD3524D8DC533769BEF /* ProgressManager.swift in Sources */,
@@ -423,9 +439,11 @@
 				CODE_SIGN_ENTITLEMENTS = App/DailyWordWidget.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = JZDSNA36C9;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = App/Info.plist;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -442,9 +460,10 @@
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = Widget/DailyWordWidgetExtension.entitlements;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = JZDSNA36C9;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Widget/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -519,9 +538,11 @@
 				CODE_SIGN_ENTITLEMENTS = App/DailyWordWidget.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = JZDSNA36C9;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = App/Info.plist;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -538,9 +559,10 @@
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = Widget/DailyWordWidgetExtension.entitlements;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = JZDSNA36C9;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Widget/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",

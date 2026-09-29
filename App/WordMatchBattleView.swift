@@ -2,11 +2,13 @@ import SwiftUI
 
 struct WordMatchBattleView: View {
     let opponentName: String
+    var opponentProfile: PublicProfile? = nil
     var isRobot: Bool = false
     var robotLevel: Int = 1
     
     @Environment(\.dismiss) var dismiss
     @AppStorage("robotDuelLevel") private var robotDuelLevelStorage: Int = 1
+    @ObservedObject private var matchManager = MatchManager.shared
     
     // Kelime eşleştirme verisi (iki sütun için)
     @State private var leftItems: [MatchItem] = []
@@ -21,9 +23,10 @@ struct WordMatchBattleView: View {
     @State private var opponentMatches = 0
     @State private var timeRemaining = 60
     @State private var gameState: GameState = .playing
+    @State private var earnedXP: Int = 0
     @State private var timer: Timer? = nil
     
-    // Opponent AI timer
+    // Opponent AI timer (Yalnızca yapay zeka robot maçlarında kullanılır)
     @State private var opponentTimer: Timer? = nil
     
     private var activeCEFRLevel: CEFRLevel {
@@ -174,6 +177,21 @@ struct WordMatchBattleView: View {
         .onDisappear {
             cleanup()
         }
+        .onChange(of: matchManager.opponentLiveScore) { newScore in
+            if !isRobot {
+                withAnimation(.spring()) {
+                    self.opponentMatches = newScore
+                }
+                if opponentMatches >= totalPairs {
+                    endGame()
+                }
+            }
+        }
+        .onChange(of: matchManager.matchFinishedEventReceived) { finished in
+            if finished && !isRobot && gameState == .playing {
+                endGame()
+            }
+        }
     }
     
     // MARK: - Card View
@@ -202,7 +220,15 @@ struct WordMatchBattleView: View {
     // MARK: - Game Setup
     
     private func setupGame() {
-        let words = WordManager.shared.words(for: activeCEFRLevel).shuffled().prefix(totalPairs)
+        let words: [Word]
+        if !isRobot, let matchWords = matchManager.activeMatch?.wordIds, !matchWords.isEmpty {
+            // Both players get the exact same words from database
+            let allWords = WordManager.shared.words(for: activeCEFRLevel)
+            let matched = matchWords.compactMap { wid in allWords.first(where: { $0.id == wid }) }
+            words = matched.isEmpty ? Array(allWords.shuffled().prefix(totalPairs)) : matched
+        } else {
+            words = Array(WordManager.shared.words(for: activeCEFRLevel).shuffled().prefix(totalPairs))
+        }
         
         var left: [MatchItem] = []
         var right: [MatchItem] = []
@@ -224,29 +250,43 @@ struct WordMatchBattleView: View {
             }
         }
         
-        // Opponent Speed Configuration
-        let aiInterval: Double
+        // Opponent Timer:
         if isRobot {
-            // Level 1: 10s, Level 30: 2.5s per match
-            aiInterval = max(2.5, 10.0 - Double(robotLevel) * 0.25)
-        } else {
-            aiInterval = Double.random(in: 4.5...7.5)
-        }
-        
-        opponentTimer = Timer.scheduledTimer(withTimeInterval: aiInterval, repeats: true) { _ in
-            guard gameState == .playing else { return }
-            if opponentMatches < totalPairs {
-                opponentMatches += 1
-                if opponentMatches == totalPairs {
-                    endGame()
+            // AI Robot practice timer
+            let aiInterval = max(2.5, 10.0 - Double(robotLevel) * 0.25)
+            opponentTimer = Timer.scheduledTimer(withTimeInterval: aiInterval, repeats: true) { _ in
+                guard gameState == .playing else { return }
+                if opponentMatches < totalPairs {
+                    opponentMatches += 1
+                    if opponentMatches == totalPairs {
+                        endGame()
+                    }
+                }
+            }
+        } else if matchManager.activeMatch == nil {
+            // Friend duel in direct/offline challenge mode (simulated against friend's profile)
+            let friendInterval = Double.random(in: 4.5...7.5)
+            opponentTimer = Timer.scheduledTimer(withTimeInterval: friendInterval, repeats: true) { _ in
+                guard gameState == .playing else { return }
+                if opponentMatches < totalPairs {
+                    opponentMatches += 1
+                    if opponentMatches == totalPairs {
+                        endGame()
+                    }
                 }
             }
         }
+        // If matchManager.activeMatch != nil, score syncs in real-time via WebSocket!
     }
     
     private func cleanup() {
         timer?.invalidate()
+        timer = nil
         opponentTimer?.invalidate()
+        opponentTimer = nil
+        if !isRobot {
+            matchManager.resetMatch()
+        }
     }
     
     // MARK: - Game Logic
@@ -307,10 +347,20 @@ struct WordMatchBattleView: View {
                 }
             }
             userMatches += 1
+            if !isRobot {
+                Task {
+                    await matchManager.sendLiveScore(score: userMatches)
+                }
+            }
             UINotificationFeedbackGenerator().notificationOccurred(.success)
             selectedId = nil
             
             if userMatches == totalPairs {
+                if !isRobot, let myId = SocialManager.shared.myProfile?.id {
+                    Task {
+                        await matchManager.sendMatchFinished(winnerId: myId)
+                    }
+                }
                 endGame()
             }
         } else {
@@ -361,15 +411,27 @@ struct WordMatchBattleView: View {
         withAnimation {
             if userMatches > opponentMatches {
                 gameState = .won
+                earnedXP = isRobot ? (15 + robotLevel * 2) : 50
                 UINotificationFeedbackGenerator().notificationOccurred(.success)
                 // Unlock next level if matched level is the current maximum level
                 if isRobot && robotLevel == robotDuelLevelStorage {
                     robotDuelLevelStorage = min(30, robotDuelLevelStorage + 1)
                 }
+                Task {
+                    await SocialManager.shared.recordDuelWin(xpGained: earnedXP, isWin: true)
+                }
             } else if userMatches < opponentMatches {
                 gameState = .lost
+                earnedXP = isRobot ? 5 : 15
+                Task {
+                    await SocialManager.shared.recordDuelWin(xpGained: earnedXP, isWin: false)
+                }
             } else {
                 gameState = .draw
+                earnedXP = isRobot ? 8 : 25
+                Task {
+                    await SocialManager.shared.recordDuelWin(xpGained: earnedXP, isWin: false)
+                }
             }
         }
     }
@@ -419,6 +481,20 @@ struct WordMatchBattleView: View {
                     .foregroundColor(Theme.textSecondary)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 32)
+                
+                if earnedXP > 0 {
+                    HStack(spacing: 6) {
+                        Image(systemName: "sparkles")
+                            .foregroundColor(.yellow)
+                        Text("+\(earnedXP) XP Kazanıldı!")
+                            .font(.system(size: 15, weight: .bold, design: .rounded))
+                            .foregroundColor(.yellow)
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+                    .background(Capsule().fill(Color.yellow.opacity(0.18)))
+                    .padding(.top, 6)
+                }
             }
             
             // Scores summary

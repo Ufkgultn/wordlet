@@ -57,142 +57,297 @@ struct SimpleEntry: TimelineEntry {
 
 // MARK: - "Class & Simple" Widget View
 
+// MARK: - Apple Translucent Glass Widget View
+
 struct DailyWordWidgetExtensionEntryView: View {
     var entry: Provider.Entry
     @Environment(\.widgetFamily) private var family
     @Environment(\.colorScheme) var colorScheme
 
-    private var emoji: String {
-        EmojiProvider.emoji(for: entry.word.english)
+    private var visualData: (symbol: String, colors: [Color]) {
+        EmojiProvider.visuals(for: entry.word.english)
+    }
+
+    // Apple New Translucent Light Glass Background
+    private var appleGlassBackground: some View {
+        ZStack {
+            // Base luminous white translucent layer
+            Color.white.opacity(0.78)
+
+            // Dynamic soft pastel ambient tint from category
+            LinearGradient(
+                colors: [
+                    (visualData.colors.first ?? Color.cyan).opacity(0.24),
+                    Color.white.opacity(0.2),
+                    (visualData.colors.last ?? Color.blue).opacity(0.18)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+
+            // Frosted top-down glass specular sheen
+            LinearGradient(
+                colors: [Color.white.opacity(0.7), Color.white.opacity(0.1)],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+
+            // Subtle elegant watermark symbol
+            VStack {
+                Spacer()
+                HStack {
+                    Spacer()
+                    Image(systemName: visualData.symbol)
+                        .font(.system(size: family == .systemSmall ? 75 : 95, weight: .light))
+                        .foregroundColor(Color.black)
+                        .opacity(0.04)
+                        .offset(x: 12, y: 12)
+                }
+            }
+        }
     }
 
     var body: some View {
         Group {
             switch family {
             case .accessoryInline:
-                Text("\(emoji) \(entry.word.english): \(entry.word.turkish)")
+                Label("\(entry.word.english): \(entry.word.turkish)", systemImage: visualData.symbol)
                     .widgetAccentable()
                 
             case .accessoryRectangular:
                 VStack(alignment: .leading, spacing: 2) {
                     HStack(spacing: 4) {
-                        Text(emoji)
+                        Image(systemName: visualData.symbol)
+                            .font(.system(size: 11))
                         Text(entry.word.level.rawValue)
                             .font(.system(size: 10, weight: .bold))
                             .opacity(0.8)
                     }
                     
                     Text(entry.word.english)
-                        .font(.system(size: 18, weight: .bold, design: .rounded))
+                        .font(.system(size: 17, weight: .bold, design: .rounded))
                         .lineLimit(1)
-                        .minimumScaleFactor(0.6)
+                        .minimumScaleFactor(0.7)
                         .widgetAccentable()
                     
                     Text(entry.word.turkish)
-                        .font(.system(size: 14, weight: .medium))
+                        .font(.system(size: 13, weight: .medium))
                         .lineLimit(1)
-                        .minimumScaleFactor(0.6)
+                        .minimumScaleFactor(0.7)
                         .opacity(0.8)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 
             case .accessoryCircular:
-                VStack(spacing: 0) {
-                    Text(emoji)
-                        .font(.title2)
+                VStack(spacing: 2) {
+                    Image(systemName: visualData.symbol)
+                        .font(.title3)
                     Text(entry.word.english)
                         .font(.system(size: 9, weight: .bold))
                         .lineLimit(1)
                         .minimumScaleFactor(0.5)
                 }
                 
-            default:
-                // Standart Ana Ekran Widgetları (Small/Medium)
+            case .systemSmall:
+                // Small Widget: Perfectly fitted, balanced spacing
                 VStack(alignment: .leading, spacing: 0) {
-                    // Üst Kısım: Seviye ve Emoji
+                    // Top: Level pill & Category Symbol
                     HStack {
-                        Text(entry.word.level.rawValue)
-                            .font(.system(size: 10, weight: .bold))
-                            .foregroundColor(colorScheme == .dark ? .white.opacity(0.6) : .black.opacity(0.4))
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
-                            .background(RoundedRectangle(cornerRadius: 4).stroke(colorScheme == .dark ? .white.opacity(0.2) : .black.opacity(0.1), lineWidth: 1))
+                        HStack(spacing: 4) {
+                            Text(entry.word.level.rawValue)
+                                .font(.system(size: 10, weight: .black, design: .rounded))
+                            Text("•")
+                                .font(.system(size: 8))
+                                .opacity(0.6)
+                            Text(entry.word.level.description)
+                                .font(.system(size: 9, weight: .semibold))
+                        }
+                        .foregroundColor(Color(red: 0.15, green: 0.20, blue: 0.30))
+                        .padding(.horizontal, 7)
+                        .padding(.vertical, 3.5)
+                        .background(
+                            Capsule()
+                                .fill(Color.white.opacity(0.85))
+                                .overlay(Capsule().stroke(Color.black.opacity(0.06), lineWidth: 0.8))
+                        )
                         
                         Spacer()
                         
-                        Text(emoji)
-                            .font(.title2)
+                        Image(systemName: visualData.symbol)
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundColor(Color(red: 0.25, green: 0.35, blue: 0.45))
+                            .frame(width: 24, height: 24)
+                            .background(Circle().fill(Color.white.opacity(0.75)))
                     }
-                    .padding(.bottom, 6)
                     
                     Spacer()
                     
-                    // Orta Kısım: Kelime ve Anlam
-                    VStack(alignment: .leading, spacing: 4) {
+                    // Middle: English & Turkish Words
+                    VStack(alignment: .leading, spacing: 3) {
                         Text(entry.word.english)
-                            .font(.system(size: 22, weight: .bold, design: .rounded))
-                            .foregroundColor(colorScheme == .dark ? .white : .black)
+                            .font(.system(size: 21, weight: .bold, design: .rounded))
+                            .foregroundColor(Color(red: 0.08, green: 0.10, blue: 0.16))
                             .lineLimit(1)
-                            .minimumScaleFactor(0.8)
+                            .minimumScaleFactor(0.7)
                         
                         Text(entry.word.turkish)
-                            .font(.system(size: 16, weight: .medium))
-                            .foregroundColor(colorScheme == .dark ? .white.opacity(0.7) : .black.opacity(0.6))
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(Color(red: 0.28, green: 0.38, blue: 0.50))
                             .lineLimit(1)
+                            .minimumScaleFactor(0.8)
                     }
                     
                     Spacer()
                     
-                    // Alt Kısım: Örnek Cümle
-                    if family != .systemSmall {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(entry.word.example)
-                                .font(.system(size: 12))
-                                .italic()
-                                .foregroundColor(colorScheme == .dark ? .white.opacity(0.85) : .black.opacity(0.75))
-                            
-                            if let tr = entry.word.exampleTurkish, !tr.isEmpty {
-                                Text(tr)
-                                    .font(.system(size: 10.5))
-                                    .foregroundColor(colorScheme == .dark ? .white.opacity(0.55) : .black.opacity(0.5))
-                            }
-                        }
-                        .lineLimit(4)
-                        .minimumScaleFactor(0.8)
-                        .multilineTextAlignment(.leading)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .padding(.top, 6)
-                    }
-                    
-                    // Buton (iOS 17+)
-                    if #available(iOS 17.0, *) {
-                        HStack {
-                            Spacer()
+                    // Bottom: Action Button / Streak Indicator
+                    HStack {
+                        Text("Günün Kelimesi")
+                            .font(.system(size: 9.5, weight: .medium))
+                            .foregroundColor(Color(red: 0.45, green: 0.52, blue: 0.60))
+                        
+                        Spacer()
+                        
+                        if #available(iOS 17.0, *) {
                             if AppSettingsManager.shared.isPremium {
                                 Button(intent: NextWordIntent()) {
                                     Image(systemName: "arrow.right")
-                                        .font(.system(size: 12, weight: .bold))
-                                        .foregroundColor(colorScheme == .dark ? .white : .black)
-                                        .padding(6)
-                                        .background(Circle().fill(colorScheme == .dark ? .white.opacity(0.1) : .black.opacity(0.05)))
+                                        .font(.system(size: 10, weight: .bold))
+                                        .foregroundColor(Color(red: 0.1, green: 0.15, blue: 0.25))
+                                        .frame(width: 22, height: 22)
+                                        .background(Circle().fill(Color.white.opacity(0.9)))
+                                        .overlay(Circle().stroke(Color.black.opacity(0.08), lineWidth: 0.5))
                                 }
                                 .buttonStyle(.plain)
                             } else {
-                                // Premium olmayan kullanıcılar için kilitli durum (Tıklayınca uygulamayı açar)
-                                Image(systemName: "crown.fill")
-                                    .font(.system(size: 12))
-                                    .foregroundColor(.yellow)
-                                    .padding(6)
-                                    .background(Circle().fill(Color.yellow.opacity(0.15)))
+                                Image(systemName: "sparkles")
+                                    .font(.system(size: 11))
+                                    .foregroundColor(.orange)
                             }
                         }
-                        .padding(.top, 6)
                     }
+                }
+                .padding(14)
+                
+            default:
+                // Medium Widget: Dual-card balanced split layout
+                HStack(spacing: 12) {
+                    // Left Column: Word & Level (45% width)
+                    VStack(alignment: .leading, spacing: 0) {
+                        HStack(spacing: 4) {
+                            Text(entry.word.level.rawValue)
+                                .font(.system(size: 10, weight: .black, design: .rounded))
+                            Text("•")
+                                .font(.system(size: 8))
+                                .opacity(0.6)
+                            Text(entry.word.level.description)
+                                .font(.system(size: 9, weight: .semibold))
+                        }
+                        .foregroundColor(Color(red: 0.15, green: 0.20, blue: 0.30))
+                        .padding(.horizontal, 7)
+                        .padding(.vertical, 3.5)
+                        .background(
+                            Capsule()
+                                .fill(Color.white.opacity(0.85))
+                                .overlay(Capsule().stroke(Color.black.opacity(0.06), lineWidth: 0.8))
+                        )
+                        
+                        Spacer()
+                        
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(entry.word.english)
+                                .font(.system(size: 22, weight: .bold, design: .rounded))
+                                .foregroundColor(Color(red: 0.08, green: 0.10, blue: 0.16))
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.75)
+                            
+                            Text(entry.word.turkish)
+                                .font(.system(size: 15, weight: .semibold))
+                                .foregroundColor(Color(red: 0.28, green: 0.38, blue: 0.50))
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.8)
+                        }
+                        
+                        Spacer()
+                        
+                        if #available(iOS 17.0, *) {
+                            if AppSettingsManager.shared.isPremium {
+                                Button(intent: NextWordIntent()) {
+                                    HStack(spacing: 4) {
+                                        Text("Sonraki")
+                                            .font(.system(size: 10, weight: .bold))
+                                        Image(systemName: "arrow.right")
+                                            .font(.system(size: 8, weight: .bold))
+                                    }
+                                    .foregroundColor(Color(red: 0.1, green: 0.15, blue: 0.25))
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 4)
+                                    .background(Capsule().fill(Color.white.opacity(0.9)))
+                                    .overlay(Capsule().stroke(Color.black.opacity(0.08), lineWidth: 0.5))
+                                }
+                                .buttonStyle(.plain)
+                            } else {
+                                HStack(spacing: 3) {
+                                    Image(systemName: "sparkles")
+                                        .font(.system(size: 9))
+                                    Text("Günlük Kelime")
+                                        .font(.system(size: 9.5, weight: .medium))
+                                }
+                                .foregroundColor(Color(red: 0.45, green: 0.52, blue: 0.60))
+                            }
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    
+                    // Right Column: Frosted Glass Inset Card for Examples (55% width)
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "quote.opening")
+                                .font(.system(size: 9))
+                                .foregroundColor(Color.orange.opacity(0.8))
+                            Text("ÖRNEK CÜMLE")
+                                .font(.system(size: 8.5, weight: .black))
+                                .foregroundColor(Color(red: 0.40, green: 0.48, blue: 0.56))
+                            Spacer()
+                            Image(systemName: visualData.symbol)
+                                .font(.system(size: 11))
+                                .foregroundColor(Color(red: 0.35, green: 0.45, blue: 0.55))
+                        }
+                        
+                        Text("\"\(entry.word.example)\"")
+                            .font(.system(size: 11.5, weight: .medium, design: .serif))
+                            .italic()
+                            .foregroundColor(Color(red: 0.12, green: 0.15, blue: 0.22))
+                            .lineLimit(3)
+                            .minimumScaleFactor(0.8)
+                            .lineSpacing(2)
+                        
+                        if let tr = entry.word.exampleTurkish, !tr.isEmpty {
+                            Text(tr)
+                                .font(.system(size: 10))
+                                .foregroundColor(Color(red: 0.42, green: 0.50, blue: 0.60))
+                                .lineLimit(2)
+                                .minimumScaleFactor(0.8)
+                        }
+                        
+                        Spacer(minLength: 0)
+                    }
+                    .padding(10)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                    .background(
+                        RoundedRectangle(cornerRadius: 14)
+                            .fill(Color.white.opacity(0.62))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 14)
+                                    .stroke(Color.white.opacity(0.85), lineWidth: 1)
+                            )
+                    )
                 }
                 .padding(14)
             }
         }
-        .containerBackground(colorScheme == .dark ? Color(white: 0.1) : Color.white, for: .widget)
+        .containerBackground(for: .widget) {
+            appleGlassBackground
+        }
     }
 }
 

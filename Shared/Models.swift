@@ -179,13 +179,144 @@ public struct PublicProfile: Codable, Identifiable, Hashable {
     public var currentLevel: String
     public var xp: Int
     public var avatarEmoji: String
+    public var matchesWon: Int
+    public var matchesPlayed: Int
     
-    public init(id: String, username: String, displayName: String, currentLevel: String, xp: Int, avatarEmoji: String) {
+    enum CodingKeys: String, CodingKey {
+        case id, username, xp
+        case displayName = "display_name"
+        case currentLevel = "current_level"
+        case avatarEmoji = "avatar_emoji"
+        case matchesWon = "matches_won"
+        case matchesPlayed = "matches_played"
+        // Fallback keys for local storage
+        case altDisplayName = "displayName"
+        case altCurrentLevel = "currentLevel"
+        case altAvatarEmoji = "avatarEmoji"
+        case altMatchesWon = "matchesWon"
+        case altMatchesPlayed = "matchesPlayed"
+    }
+    
+    public init(
+        id: String,
+        username: String,
+        displayName: String,
+        currentLevel: String,
+        xp: Int,
+        avatarEmoji: String,
+        matchesWon: Int = 0,
+        matchesPlayed: Int = 0
+    ) {
         self.id = id
         self.username = username
         self.displayName = displayName
         self.currentLevel = currentLevel
         self.xp = xp
         self.avatarEmoji = avatarEmoji
+        self.matchesWon = matchesWon
+        self.matchesPlayed = matchesPlayed
+    }
+    
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.id = try container.decode(String.self, forKey: .id)
+        self.username = try container.decode(String.self, forKey: .username)
+        self.displayName = try container.decodeIfPresent(String.self, forKey: .displayName)
+            ?? container.decodeIfPresent(String.self, forKey: .altDisplayName)
+            ?? "Kullanıcı"
+        self.currentLevel = try container.decodeIfPresent(String.self, forKey: .currentLevel)
+            ?? container.decodeIfPresent(String.self, forKey: .altCurrentLevel)
+            ?? "A1"
+        self.xp = try container.decodeIfPresent(Int.self, forKey: .xp) ?? 0
+        self.avatarEmoji = try container.decodeIfPresent(String.self, forKey: .avatarEmoji)
+            ?? container.decodeIfPresent(String.self, forKey: .altAvatarEmoji)
+            ?? "🚀"
+        self.matchesWon = try container.decodeIfPresent(Int.self, forKey: .matchesWon)
+            ?? container.decodeIfPresent(Int.self, forKey: .altMatchesWon)
+            ?? 0
+        self.matchesPlayed = try container.decodeIfPresent(Int.self, forKey: .matchesPlayed)
+            ?? container.decodeIfPresent(Int.self, forKey: .altMatchesPlayed)
+            ?? 0
+    }
+    
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(username, forKey: .username)
+        try container.encode(displayName, forKey: .displayName)
+        try container.encode(currentLevel, forKey: .currentLevel)
+        try container.encode(xp, forKey: .xp)
+        try container.encode(avatarEmoji, forKey: .avatarEmoji)
+        try container.encode(matchesWon, forKey: .matchesWon)
+        try container.encode(matchesPlayed, forKey: .matchesPlayed)
+    }
+}
+
+public struct DuelMatch: Codable, Identifiable {
+    public let id: String
+    public var roomCode: String?
+    public let player1Id: String
+    public var player2Id: String?
+    public var player1Name: String
+    public var player2Name: String?
+    public var player1Avatar: String
+    public var player2Avatar: String?
+    public var player1Score: Int
+    public var player2Score: Int
+    public var status: String // "waiting", "in_progress", "completed", "cancelled"
+    public var winnerId: String?
+    public var mode: String // "random", "friend", "room"
+    public var level: String
+    public var wordIds: [String]
+    
+    enum CodingKeys: String, CodingKey {
+        case id
+        case roomCode = "room_code"
+        case player1Id = "player1_id"
+        case player2Id = "player2_id"
+        case player1Name = "player1_name"
+        case player2Name = "player2_name"
+        case player1Avatar = "player1_avatar"
+        case player2Avatar = "player2_avatar"
+        case player1Score = "player1_score"
+        case player2Score = "player2_score"
+        case status
+        case winnerId = "winner_id"
+        case mode, level
+        case wordIds = "word_ids"
+    }
+    
+    public init(
+        id: String,
+        roomCode: String? = nil,
+        player1Id: String,
+        player2Id: String? = nil,
+        player1Name: String,
+        player2Name: String? = nil,
+        player1Avatar: String = "🚀",
+        player2Avatar: String? = nil,
+        player1Score: Int = 0,
+        player2Score: Int = 0,
+        status: String = "waiting",
+        winnerId: String? = nil,
+        mode: String = "random",
+        level: String = "A1",
+        wordIds: [String] = []
+    ) {
+        self.id = id
+        self.roomCode = roomCode
+        self.player1Id = player1Id
+        self.player2Id = player2Id
+        self.player1Name = player1Name
+        self.player2Name = player2Name
+        self.player1Avatar = player1Avatar
+        self.player2Avatar = player2Avatar
+        self.player1Score = player1Score
+        self.player2Score = player2Score
+        self.status = status
+        self.winnerId = winnerId
+        self.mode = mode
+        self.level = level
+        self.wordIds = wordIds
     }
 }

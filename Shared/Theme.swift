@@ -35,7 +35,7 @@ public struct GlassCardModifier: ViewModifier {
     
     public func body(content: Content) -> some View {
         content
-            .glassEffect(.regular, in: RoundedRectangle(cornerRadius: cornerRadius))
+            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: cornerRadius))
             .shadow(color: Color.black.opacity(0.12), radius: 12, x: 0, y: 8)
     }
 }
@@ -88,3 +88,51 @@ public extension View {
         self.modifier(AppBackgroundModifier())
     }
 }
+
+// MARK: - Reusable User Avatar (Photo or Emoji)
+#if canImport(UIKit)
+import UIKit
+
+public struct UserAvatarView: View {
+    let emoji: String
+    var size: CGFloat
+    var customPhotoData: Data?
+    
+    public init(emoji: String, size: CGFloat = 54, customPhotoData: Data? = nil) {
+        self.emoji = emoji
+        self.size = size
+        self.customPhotoData = customPhotoData
+    }
+    
+    private var photoData: Data? {
+        customPhotoData ?? UserDefaults.standard.data(forKey: "user_profile_photo_data")
+    }
+    
+    public var body: some View {
+        if let data = photoData, let uiImage = UIImage(data: data) {
+            Image(uiImage: uiImage)
+                .resizable()
+                .scaledToFill()
+                .frame(width: size, height: size)
+                .clipShape(Circle())
+                .overlay(Circle().stroke(Theme.accent.opacity(0.8), lineWidth: 1.5))
+        } else {
+            ZStack {
+                Circle()
+                    .fill(
+                        LinearGradient(
+                            colors: [Theme.accent.opacity(0.35), Color.blue.opacity(0.4)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .frame(width: size, height: size)
+                    .overlay(Circle().stroke(Color.white.opacity(0.15), lineWidth: 1))
+                
+                Text(emoji.isEmpty ? "🚀" : emoji)
+                    .font(.system(size: size * 0.52))
+            }
+        }
+    }
+}
+#endif

@@ -9,19 +9,12 @@ public class SocialManager: ObservableObject {
     @Published public var myProfile: PublicProfile? = nil
     @Published public var friends: [PublicProfile] = []
     @Published public var pendingRequests: [FriendRequest] = []
+    @Published public var friendsLeaderboard: [PublicProfile] = []
+    @Published public var globalLeaderboard: [PublicProfile] = []
+    @Published public var errorMessage: String? = nil
+    @Published public var isLoading: Bool = false
     
     private let client = SupabaseManager.shared.client
-    
-    // Fallback local mock arrays
-    private var useMock: Bool = false
-    private var mockFriends: [PublicProfile] = [
-        PublicProfile(id: "mock1", username: "elif_demir", displayName: "Elif Demir", currentLevel: "B1", xp: 1250, avatarEmoji: "🦊"),
-        PublicProfile(id: "mock2", username: "can_y", displayName: "Can Yılmaz", currentLevel: "A2", xp: 750, avatarEmoji: "🦁"),
-        PublicProfile(id: "mock3", username: "merve_k", displayName: "Merve Kaya", currentLevel: "A1", xp: 350, avatarEmoji: "🐨")
-    ]
-    private var mockRequests: [FriendRequest] = [
-        FriendRequest(id: "req1", senderId: "mock4", senderName: "Burak Şen", senderUsername: "burak_s", avatarEmoji: "🐼")
-    ]
     
     public struct FriendRequest: Identifiable, Codable, Hashable {
         public let id: String
@@ -40,12 +33,12 @@ public class SocialManager: ObservableObject {
     }
     
     private init() {
-        // Load initial mock state
-        self.friends = mockFriends
-        self.pendingRequests = mockRequests
+        if let local = loadLocalProfile() {
+            self.myProfile = local
+        }
     }
     
-    // MARK: - Local Persistence Helpers
+    // MARK: - Local Persistence
     
     private func saveLocalProfile(_ profile: PublicProfile) {
         if let encoded = try? JSONEncoder().encode(profile) {
@@ -61,49 +54,122 @@ public class SocialManager: ObservableObject {
         return nil
     }
     
+    // MARK: - Profile & Friends Fetching
+    
     public func loadProfileAndFriends() async {
         guard let user = AuthManager.shared.currentUser else { return }
+        isLoading = true
+        errorMessage = nil
         
         do {
-            // Try fetching from real Supabase profiles table
-            let profile: PublicProfile = try await client.database
+            // 1. Fetch current user's profile from Supabase
+            let profileResponse: [PublicProfile] = try await client
                 .from("profiles")
                 .select()
                 .eq("id", value: user.id)
-                .single()
                 .execute()
                 .value
-            self.myProfile = profile
-            useMock = false
-            saveLocalProfile(profile) // Cache locally
-        } catch {
-            print("Supabase profile error: \(error.localizedDescription). Falling back to mock/local.")
-            useMock = true
             
-            // Local fallback with persistence
-            if let local = loadLocalProfile() {
-                self.myProfile = local
+            if let existing = profileResponse.first {
+                self.myProfile = existing
+                saveLocalProfile(existing)
             } else {
-                let defaultProfile = PublicProfile(
+                // Profile row does not exist yet: create it in the database
+                let cleanUsername = user.email.components(separatedBy: "@").first ?? "user_\(Int.random(in: 100...999))"
+                let newProfile = PublicProfile(
                     id: user.id,
-                    username: user.firstName.lowercased() + "_user",
-                    displayName: user.firstName + " " + user.lastName,
+                    username: cleanUsername.lowercased(),
+                    displayName: "\(user.firstName) \(user.lastName)".trimmingCharacters(in: .whitespaces),
                     currentLevel: ProgressManager.shared.progress.currentLevel.rawValue,
-                    xp: 150,
-                    avatarEmoji: "🚀"
+                    xp: 0,
+                    avatarEmoji: "🚀",
+                    matchesWon: 0,
+                    matchesPlayed: 0
                 )
-                self.myProfile = defaultProfile
-                saveLocalProfile(defaultProfile)
+                
+                try await client
+                    .from("profiles")
+                    .insert(newProfile)
+                    .execute()
+                
+                self.myProfile = newProfile
+                saveLocalProfile(newProfile)
+            }
+            
+            // 2. Fetch real friends and requests
+            await fetchRealFriends()
+            await fetchRealRequests()
+            await fetchLeaderboards()
+        } catch {
+            print("Supabase profile load error: \(error.localizedDescription)")
+            self.errorMessage = error.localizedDescription
+            if myProfile == nil, let local = loadLocalProfile() {
+                self.myProfile = local
             }
         }
         
-        if useMock {
-            self.friends = mockFriends
-            self.pendingRequests = mockRequests
-        } else {
-            await fetchRealFriends()
-            await fetchRealRequests()
+        isLoading = false
+    }
+    
+    public func fetchLeaderboards() async {
+        do {
+            // Real Global Leaderboard from Supabase profiles
+            let globals: [PublicProfile] = try await client
+                .from("profiles")
+                .select()
+                .order("xp", ascending: false)
+                .limit(50)
+                .execute()
+                .value
+            self.globalLeaderboard = globals
+        } catch {
+            print("Failed to fetch global leaderboard: \(error)")
         }
+        
+        // Real Friends Leaderboard: My profile + accepted friends
+        var list: [PublicProfile] = []
+        if let me = myProfile {
+            list.append(me)
+        }
+        for f in friends {
+            if !list.contains(where: { $0.id == f.id }) {
+                list.append(f)
+            }
+        }
+        self.friendsLeaderboard = list.sorted(by: { $0.xp > $1.xp })
+    }
+    
+    public func recordDuelWin(xpGained: Int, isWin: Bool) async {
+        guard var profile = myProfile else { return }
+        
+        profile.matchesPlayed += 1
+        if isWin {
+            profile.matchesWon += 1
+            profile.xp += xpGained
+        } else {
+            profile.xp += max(5, xpGained / 4)
+        }
+        
+        saveLocalProfile(profile)
+        self.myProfile = profile
+        
+        // Sync with real Supabase database
+        do {
+            let updatePayload: [String: AnyJSON] = [
+                "xp": .integer(profile.xp),
+                "matches_won": .integer(profile.matchesWon),
+                "matches_played": .integer(profile.matchesPlayed)
+            ]
+            try await client
+                .from("profiles")
+                .update(updatePayload)
+                .eq("id", value: profile.id)
+                .execute()
+        } catch {
+            print("Failed to sync duel win to database: \(error)")
+        }
+        
+        await fetchLeaderboards()
     }
     
     public func updateProfile(username: String, displayName: String, avatarEmoji: String) async throws {
@@ -113,40 +179,24 @@ public class SocialManager: ObservableObject {
         updated.displayName = displayName.trimmingCharacters(in: .whitespaces)
         updated.avatarEmoji = avatarEmoji
         
-        // Save locally first to guarantee immediate persistence
         saveLocalProfile(updated)
         self.myProfile = updated
         
-        if useMock {
-            UINotificationFeedbackGenerator().notificationOccurred(.success)
-            return
-        }
+        try await client
+            .from("profiles")
+            .update(updated)
+            .eq("id", value: profile.id)
+            .execute()
         
-        do {
-            try await client.database
-                .from("profiles")
-                .update(updated)
-                .eq("id", value: profile.id)
-                .execute()
-        } catch {
-            print("Failed to update real profile: \(error)")
-        }
+        await fetchLeaderboards()
     }
     
     public func searchUserByUsername(username: String) async -> PublicProfile? {
         let query = username.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        if useMock {
-            if query == "burak" || query == "burak_s" {
-                return PublicProfile(id: "mock4", username: "burak_s", displayName: "Burak Şen", currentLevel: "B2", xp: 1800, avatarEmoji: "🐼")
-            }
-            if query == "selin" {
-                return PublicProfile(id: "mock5", username: "selin_g", displayName: "Selin Gök", currentLevel: "A1", xp: 120, avatarEmoji: "🐱")
-            }
-            return nil
-        }
+        guard !query.isEmpty else { return nil }
         
         do {
-            let matches: [PublicProfile] = try await client.database
+            let matches: [PublicProfile] = try await client
                 .from("profiles")
                 .select()
                 .eq("username", value: query)
@@ -154,7 +204,7 @@ public class SocialManager: ObservableObject {
                 .value
             return matches.first
         } catch {
-            print("Search error: \(error)")
+            print("Real search user error: \(error)")
             return nil
         }
     }
@@ -162,44 +212,21 @@ public class SocialManager: ObservableObject {
     public func sendFriendRequest(receiverId: String) async throws {
         guard let profile = myProfile else { return }
         
-        if useMock {
-            return
-        }
-        
-        let requestData = [
-            "sender_id": profile.id,
-            "receiver_id": receiverId,
-            "status": "pending"
+        let requestData: [String: AnyJSON] = [
+            "sender_id": .string(profile.id),
+            "receiver_id": .string(receiverId),
+            "status": .string("pending")
         ]
         
-        try await client.database
+        try await client
             .from("friendships")
             .insert(requestData)
             .execute()
     }
     
     public func acceptFriendRequest(requestId: String) async {
-        if useMock {
-            if let reqIdx = pendingRequests.firstIndex(where: { $0.id == requestId }) {
-                let req = pendingRequests[reqIdx]
-                let newFriend = PublicProfile(
-                    id: req.senderId,
-                    username: req.senderUsername,
-                    displayName: req.senderName,
-                    currentLevel: "A1",
-                    xp: 300,
-                    avatarEmoji: req.avatarEmoji
-                )
-                friends.append(newFriend)
-                mockFriends.append(newFriend)
-                pendingRequests.remove(at: reqIdx)
-                mockRequests = pendingRequests
-            }
-            return
-        }
-        
         do {
-            try await client.database
+            try await client
                 .from("friendships")
                 .update(["status": "accepted"])
                 .eq("id", value: requestId)
@@ -207,36 +234,32 @@ public class SocialManager: ObservableObject {
             
             await fetchRealRequests()
             await fetchRealFriends()
+            await fetchLeaderboards()
         } catch {
             print("Accept friend request error: \(error)")
         }
     }
     
     public func rejectFriendRequest(requestId: String) async {
-        if useMock {
-            pendingRequests.removeAll(where: { $0.id == requestId })
-            mockRequests = pendingRequests
-            return
-        }
-        
         do {
-            try await client.database
+            try await client
                 .from("friendships")
                 .delete()
                 .eq("id", value: requestId)
                 .execute()
+            
             await fetchRealRequests()
         } catch {
             print("Reject request error: \(error)")
         }
     }
     
-    // MARK: - Supabase Real fetch helpers
+    // MARK: - Supabase Real Friends Fetching
     
     private func fetchRealFriends() async {
         guard let profile = myProfile else { return }
         do {
-            let sent: [FriendshipWrapper] = try await client.database
+            let sent: [FriendshipWrapper] = try await client
                 .from("friendships")
                 .select("id, receiver_id, status")
                 .eq("sender_id", value: profile.id)
@@ -244,7 +267,7 @@ public class SocialManager: ObservableObject {
                 .execute()
                 .value
             
-            let received: [FriendshipWrapper] = try await client.database
+            let received: [FriendshipWrapper] = try await client
                 .from("friendships")
                 .select("id, sender_id, status")
                 .eq("receiver_id", value: profile.id)
@@ -261,7 +284,7 @@ public class SocialManager: ObservableObject {
                 return
             }
             
-            let profiles: [PublicProfile] = try await client.database
+            let profiles: [PublicProfile] = try await client
                 .from("profiles")
                 .select()
                 .in("id", values: friendIDs)
@@ -270,14 +293,15 @@ public class SocialManager: ObservableObject {
             
             self.friends = profiles
         } catch {
-            print("Fetch friends error: \(error)")
+            print("Fetch real friends error: \(error)")
+            self.friends = []
         }
     }
     
     private func fetchRealRequests() async {
         guard let profile = myProfile else { return }
         do {
-            let received: [FriendshipWithSender] = try await client.database
+            let received: [FriendshipWithSender] = try await client
                 .from("friendships")
                 .select("id, sender_id, status, profiles:sender_id(id, username, display_name, avatar_emoji)")
                 .eq("receiver_id", value: profile.id)
@@ -295,7 +319,8 @@ public class SocialManager: ObservableObject {
                 )
             }
         } catch {
-            print("Fetch requests error: \(error)")
+            print("Fetch real requests error: \(error)")
+            self.pendingRequests = []
         }
     }
 }

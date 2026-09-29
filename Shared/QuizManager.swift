@@ -110,7 +110,7 @@ public class QuizManager {
         let knownIDs = Set(ProgressManager.shared.progress.knownWordIDs)
         let unknownIDs = Set(ProgressManager.shared.progress.unknownWordIDs)
         
-        var knownWords = allLevelWords.filter { knownIDs.contains($0.id) }
+        let knownWords = allLevelWords.filter { knownIDs.contains($0.id) }
         var unknownWords = allLevelWords.filter { unknownIDs.contains($0.id) }
         
         let totalCount = 20

@@ -9,7 +9,7 @@ targets:
   DailyWordWidget:
     type: application
     platform: iOS
-    deploymentTarget: "26.0"
+    deploymentTarget: "17.0"
     sources:
       - App
       - Shared
@@ -24,11 +24,31 @@ targets:
       MARKETING_VERSION: 1.0
       ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
       CODE_SIGN_ENTITLEMENTS: App/DailyWordWidget.entitlements
+      DEVELOPMENT_TEAM: JZDSNA36C9
+    info:
+      path: App/Info.plist
+      properties:
+        CFBundleDisplayName: "Daily Word"
+        CFBundleIconName: "AppIcon"
+        CFBundleURLTypes:
+          - CFBundleTypeRole: Editor
+            CFBundleURLName: com.ufuk.DailyWordWidget
+            CFBundleURLSchemes:
+              - com.ufuk.DailyWordWidget
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        UISupportedInterfaceOrientations~ipad:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
 
   DailyWordWidgetExtension:
     type: app-extension
     platform: iOS
-    deploymentTarget: "26.0"
+    deploymentTarget: "17.0"
     sources:
       - Widget
       - Shared
@@ -38,9 +58,11 @@ targets:
       CURRENT_PROJECT_VERSION: 1
       MARKETING_VERSION: 1.0
       CODE_SIGN_ENTITLEMENTS: Widget/DailyWordWidgetExtension.entitlements
+      DEVELOPMENT_TEAM: JZDSNA36C9
     info:
       path: Widget/Info.plist
       properties:
+        CFBundleDisplayName: "Daily Word Widget"
         NSExtension:
           NSExtensionPointIdentifier: com.apple.widgetkit-extension
 
