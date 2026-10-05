@@ -139,6 +139,8 @@ struct HomeView: View {
                     }
                 }
 
+                // v1.0 için Paywall butonu gizlendi (v1.1 güncellemesinde aktif edilecek)
+                /*
                 Button {
                     showPaywall = true
                 } label: {
@@ -149,6 +151,7 @@ struct HomeView: View {
                         .padding(.vertical, 6)
                         .background(.regularMaterial, in: Capsule())
                 }
+                */
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 10)
@@ -370,6 +373,7 @@ struct SwipeCard: View {
                     .font(.system(size: 42, weight: .bold, design: .serif))
                     .foregroundStyle(.white)
                     .multilineTextAlignment(.center)
+                    .minimumScaleFactor(0.5)
                     .padding(.top, 40)
 
                 Text(word.turkish)
@@ -379,6 +383,7 @@ struct SwipeCard: View {
                     .padding(.vertical, 10)
                     .background(Color.white.opacity(0.9))
                     .clipShape(Capsule())
+                    .minimumScaleFactor(0.5)
 
                 Spacer()
 
@@ -388,6 +393,7 @@ struct SwipeCard: View {
                         .font(.body.italic())
                         .foregroundStyle(.white.opacity(0.9))
                         .multilineTextAlignment(.center)
+                        .fixedSize(horizontal: false, vertical: true)
 
                     if let tr = word.exampleTurkish {
                         Divider()
@@ -397,6 +403,7 @@ struct SwipeCard: View {
                             .font(.footnote)
                             .foregroundStyle(.white.opacity(0.55))
                             .multilineTextAlignment(.center)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
                 }
                 .padding(20)

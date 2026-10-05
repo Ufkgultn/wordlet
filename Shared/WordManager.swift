@@ -108,6 +108,10 @@ public class WordManager {
         ids.append(id)
         defaults.set(ids, forKey: seenKey)
         defaults.synchronize()
+        
+        // Kullanıcı isteği: Widget'ta görülen kelimeler öğrenildi sayılsın
+        ProgressManager.shared.markLearned(wordID: id, learned: true)
+        
         NotificationCenter.default.post(name: .wordFlowDidChange, object: nil)
     }
 

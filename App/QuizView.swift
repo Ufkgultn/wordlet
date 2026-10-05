@@ -279,6 +279,7 @@ struct QuizView: View {
                 .font(.title3.weight(.semibold))
                 .foregroundColor(.white)
                 .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
         }
         .padding(24)
         .glassCard(cornerRadius: 20)
@@ -295,6 +296,7 @@ struct QuizView: View {
                         Text(choice)
                             .font(.body.weight(.medium))
                             .foregroundColor(.white)
+                            .fixedSize(horizontal: false, vertical: true)
                         Spacer()
                         if showFeedback {
                             if choice == questions[currentIndex].correctAnswer {

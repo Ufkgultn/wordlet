@@ -41,7 +41,7 @@ Projeyi yerel bilgisayarınızda çalıştırmak için aşağıdaki adımları i
 
 1. **Projeyi Klonlayın:**
    ```bash
-   git clone https://github.com/ugurboz/wordlet.git
+   git clone https://github.com/Ufkgultn/wordlet.git
    cd wordlet
    ```
 

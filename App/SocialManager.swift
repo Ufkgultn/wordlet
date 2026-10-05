@@ -284,14 +284,13 @@ public class SocialManager: ObservableObject {
                 return
             }
             
-            let profiles: [PublicProfile] = try await client
+            let allProfiles: [PublicProfile] = try await client
                 .from("profiles")
                 .select()
-                .in("id", values: friendIDs)
                 .execute()
                 .value
             
-            self.friends = profiles
+            self.friends = allProfiles.filter { friendIDs.contains($0.id) && $0.id != profile.id }
         } catch {
             print("Fetch real friends error: \(error)")
             self.friends = []
@@ -322,6 +321,52 @@ public class SocialManager: ObservableObject {
             print("Fetch real requests error: \(error)")
             self.pendingRequests = []
         }
+    }
+    
+    // MARK: - Polling for New Friend Requests
+    
+    private var isPolling = false
+    private var previousRequestIds: Set<String> = []
+    
+    public func startPollingRequests() async {
+        guard !isPolling else { return }
+        isPolling = true
+        
+        // Initialize with current requests
+        previousRequestIds = Set(pendingRequests.map { $0.id })
+        
+        while isPolling {
+            try? await Task.sleep(nanoseconds: 15_000_000_000) // 15 seconds
+            guard myProfile != nil else { continue }
+            
+            await fetchRealRequests()
+            
+            let currentIds = Set(pendingRequests.map { $0.id })
+            let newIds = currentIds.subtracting(previousRequestIds)
+            
+            if !newIds.isEmpty {
+                for req in pendingRequests where newIds.contains(req.id) {
+                    // In-app banner
+                    NotificationManager.shared.showBanner(
+                        title: "Arkadaşlık İsteği",
+                        message: "\(req.senderName) (@\(req.senderUsername)) sana arkadaşlık isteği gönderdi!",
+                        emoji: "👋"
+                    )
+                    
+                    // Push notification (for background)
+                    NotificationManager.shared.sendLocalNotification(
+                        title: "Yeni Arkadaşlık İsteği 👋",
+                        body: "\(req.senderName) sana arkadaşlık isteği gönderdi!"
+                    )
+                }
+            }
+            
+            previousRequestIds = currentIds
+        }
+    }
+    
+    public func stopPolling() {
+        isPolling = false
     }
 }
 

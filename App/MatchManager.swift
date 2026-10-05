@@ -42,7 +42,7 @@ public class MatchManager: ObservableObject {
     
     // MARK: - 1. Random Matchmaking (100% Real Online Network Match)
     
-    public func startRandomMatchmaking(level: CEFRLevel = ProgressManager.shared.progress.currentLevel) async {
+    public func startRandomMatchmaking(level: CEFRLevel = ProgressManager.shared.progress.currentLevel, gameMode: Int = UserDefaults.standard.integer(forKey: "selectedMinigame")) async {
         guard !isSearching else { return }
         guard let myProfile = SocialManager.shared.myProfile else {
             self.errorMessage = "Maça başlamak için profil yüklenemedi. Lütfen giriş yapın."
@@ -66,7 +66,7 @@ public class MatchManager: ObservableObject {
                 .from("matches")
                 .select()
                 .eq("status", value: "waiting")
-                .eq("mode", value: "random")
+                .eq("mode", value: "random_\(gameMode)")
                 .eq("level", value: level.rawValue)
                 .neq("player1_id", value: myProfile.id)
                 .limit(1)
@@ -129,7 +129,7 @@ public class MatchManager: ObservableObject {
             self.searchStatus = "Lobi açıldı (#\(generatedCode)). Çevrimiçi bir oyuncunun katılması bekleniyor..."
             
             // Pick random words for this match
-            let words = WordManager.shared.words(for: level).shuffled().prefix(6).map { $0.id }
+            let words = WordManager.shared.words(for: level).shuffled().prefix(50).map { $0.id }
             
             let newMatch = DuelMatch(
                 id: UUID().uuidString,
@@ -144,7 +144,7 @@ public class MatchManager: ObservableObject {
                 player2Score: 0,
                 status: "waiting",
                 winnerId: nil,
-                mode: "random",
+                mode: "random_\(gameMode)",
                 level: level.rawValue,
                 wordIds: Array(words)
             )
@@ -171,7 +171,7 @@ public class MatchManager: ObservableObject {
     
     // MARK: - 2. Room Code Real-Time Duel (Oda Kodu ile Canlı Maç)
     
-    public func createPrivateRoom(level: CEFRLevel = ProgressManager.shared.progress.currentLevel) async {
+    public func createPrivateRoom(level: CEFRLevel = ProgressManager.shared.progress.currentLevel, gameMode: Int = UserDefaults.standard.integer(forKey: "selectedMinigame")) async {
         guard let myProfile = SocialManager.shared.myProfile else { return }
         
         isSearching = true
@@ -179,7 +179,7 @@ public class MatchManager: ObservableObject {
         self.roomCode = generatedCode
         self.searchStatus = "Oda Kodu: \(generatedCode)\nArkadaşının bu kodu girmesini bekle..."
         
-        let words = WordManager.shared.words(for: level).shuffled().prefix(6).map { $0.id }
+        let words = WordManager.shared.words(for: level).shuffled().prefix(50).map { $0.id }
         let match = DuelMatch(
             id: UUID().uuidString,
             roomCode: generatedCode,
@@ -187,7 +187,7 @@ public class MatchManager: ObservableObject {
             player1Name: myProfile.displayName,
             player1Avatar: myProfile.avatarEmoji,
             status: "waiting",
-            mode: "room",
+            mode: "room_\(gameMode)",
             level: level.rawValue,
             wordIds: Array(words)
         )

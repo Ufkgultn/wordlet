@@ -6,6 +6,7 @@ struct LoginView: View {
     @Environment(\.dismiss) private var dismiss
 
     @State private var isRegistering = false
+    @State private var username  = ""
     @State private var firstName = ""
     @State private var lastName  = ""
     @State private var email     = ""
@@ -111,6 +112,7 @@ struct LoginView: View {
                     // Email/Password Form Card
                     VStack(spacing: 14) {
                         if isRegistering {
+                            styledField("Kullanıcı Adı", text: $username, autoCapitalize: false)
                             HStack(spacing: 12) {
                                 styledField("Ad", text: $firstName)
                                 styledField("Soyad", text: $lastName)
@@ -245,6 +247,7 @@ struct LoginView: View {
             do {
                 if isRegistering {
                     try await authManager.register(
+                        username: username,
                         firstName: firstName,
                         lastName: lastName,
                         email: email,

@@ -109,7 +109,7 @@ BEGIN
   INSERT INTO public.profiles (id, username, display_name, current_level, xp, matches_won, matches_played, avatar_emoji)
   VALUES (
     new.id,
-    lower(split_part(new.email, '@', 1)) || '_' || floor(random() * 1000)::text,
+    COALESCE(new.raw_user_meta_data->>'username', lower(split_part(new.email, '@', 1)) || '_' || floor(random() * 1000)::text),
     COALESCE(new.raw_user_meta_data->>'full_name', COALESCE(new.raw_user_meta_data->>'first_name', 'Yeni') || ' ' || COALESCE(new.raw_user_meta_data->>'last_name', 'Kullanıcı')),
     'A1',
     0,

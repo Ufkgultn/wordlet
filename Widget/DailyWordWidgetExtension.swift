@@ -115,26 +115,27 @@ struct DailyWordWidgetExtensionEntryView: View {
                     .widgetAccentable()
                 
             case .accessoryRectangular:
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: 1) {
                     HStack(spacing: 4) {
                         Image(systemName: visualData.symbol)
-                            .font(.system(size: 11))
+                            .font(.system(size: 10, weight: .semibold))
                         Text(entry.word.level.rawValue)
-                            .font(.system(size: 10, weight: .bold))
-                            .opacity(0.8)
+                            .font(.system(size: 9.5, weight: .black, design: .rounded))
+                        Spacer()
                     }
+                    .opacity(0.8)
                     
                     Text(entry.word.english)
-                        .font(.system(size: 17, weight: .bold, design: .rounded))
+                        .font(.system(size: 20, weight: .bold, design: .rounded))
                         .lineLimit(1)
-                        .minimumScaleFactor(0.7)
+                        .minimumScaleFactor(0.65)
                         .widgetAccentable()
                     
                     Text(entry.word.turkish)
-                        .font(.system(size: 13, weight: .medium))
+                        .font(.system(size: 14.5, weight: .semibold))
                         .lineLimit(1)
                         .minimumScaleFactor(0.7)
-                        .opacity(0.8)
+                        .opacity(0.88)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 
@@ -143,7 +144,7 @@ struct DailyWordWidgetExtensionEntryView: View {
                     Image(systemName: visualData.symbol)
                         .font(.title3)
                     Text(entry.word.english)
-                        .font(.system(size: 9, weight: .bold))
+                        .font(.system(size: 9.5, weight: .bold))
                         .lineLimit(1)
                         .minimumScaleFactor(0.5)
                 }
@@ -182,19 +183,19 @@ struct DailyWordWidgetExtensionEntryView: View {
                     
                     Spacer()
                     
-                    // Middle: English & Turkish Words
+                    // Middle: English & Turkish Words (Enlarged)
                     VStack(alignment: .leading, spacing: 3) {
                         Text(entry.word.english)
-                            .font(.system(size: 21, weight: .bold, design: .rounded))
+                            .font(.system(size: 25, weight: .bold, design: .rounded))
                             .foregroundColor(Color(red: 0.08, green: 0.10, blue: 0.16))
                             .lineLimit(1)
-                            .minimumScaleFactor(0.7)
+                            .minimumScaleFactor(0.65)
                         
                         Text(entry.word.turkish)
-                            .font(.system(size: 14, weight: .semibold))
+                            .font(.system(size: 16, weight: .semibold))
                             .foregroundColor(Color(red: 0.28, green: 0.38, blue: 0.50))
                             .lineLimit(1)
-                            .minimumScaleFactor(0.8)
+                            .minimumScaleFactor(0.7)
                     }
                     
                     Spacer()
@@ -229,9 +230,9 @@ struct DailyWordWidgetExtensionEntryView: View {
                 .padding(14)
                 
             default:
-                // Medium Widget: Dual-card balanced split layout
-                HStack(spacing: 12) {
-                    // Left Column: Word & Level (45% width)
+                // Medium Widget: Dual-card layout with enlarged sentence card
+                HStack(spacing: 10) {
+                    // Left Column: Word & Level (compact width ~120pt)
                     VStack(alignment: .leading, spacing: 0) {
                         HStack(spacing: 4) {
                             Text(entry.word.level.rawValue)
@@ -255,16 +256,16 @@ struct DailyWordWidgetExtensionEntryView: View {
                         
                         VStack(alignment: .leading, spacing: 3) {
                             Text(entry.word.english)
-                                .font(.system(size: 22, weight: .bold, design: .rounded))
+                                .font(.system(size: 21, weight: .bold, design: .rounded))
                                 .foregroundColor(Color(red: 0.08, green: 0.10, blue: 0.16))
                                 .lineLimit(1)
-                                .minimumScaleFactor(0.75)
+                                .minimumScaleFactor(0.7)
                             
                             Text(entry.word.turkish)
-                                .font(.system(size: 15, weight: .semibold))
+                                .font(.system(size: 14, weight: .semibold))
                                 .foregroundColor(Color(red: 0.28, green: 0.38, blue: 0.50))
                                 .lineLimit(1)
-                                .minimumScaleFactor(0.8)
+                                .minimumScaleFactor(0.75)
                         }
                         
                         Spacer()
@@ -296,10 +297,10 @@ struct DailyWordWidgetExtensionEntryView: View {
                             }
                         }
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .frame(width: 120, alignment: .leading)
                     
-                    // Right Column: Frosted Glass Inset Card for Examples (55% width)
-                    VStack(alignment: .leading, spacing: 6) {
+                    // Right Column: Enlarged Frosted Glass Card for Examples
+                    VStack(alignment: .leading, spacing: 5) {
                         HStack(spacing: 4) {
                             Image(systemName: "quote.opening")
                                 .font(.system(size: 9))
@@ -314,35 +315,38 @@ struct DailyWordWidgetExtensionEntryView: View {
                         }
                         
                         Text("\"\(entry.word.example)\"")
-                            .font(.system(size: 11.5, weight: .medium, design: .serif))
+                            .font(.system(size: 13, weight: .medium, design: .serif))
                             .italic()
                             .foregroundColor(Color(red: 0.12, green: 0.15, blue: 0.22))
-                            .lineLimit(3)
-                            .minimumScaleFactor(0.8)
+                            .lineLimit(8)
+                            .minimumScaleFactor(0.4)
                             .lineSpacing(2)
                         
                         if let tr = entry.word.exampleTurkish, !tr.isEmpty {
                             Text(tr)
-                                .font(.system(size: 10))
+                                .font(.system(size: 11.5))
                                 .foregroundColor(Color(red: 0.42, green: 0.50, blue: 0.60))
-                                .lineLimit(2)
-                                .minimumScaleFactor(0.8)
+                                .lineLimit(6)
+                                .minimumScaleFactor(0.4)
                         }
                         
                         Spacer(minLength: 0)
                     }
-                    .padding(10)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                     .background(
-                        RoundedRectangle(cornerRadius: 14)
-                            .fill(Color.white.opacity(0.62))
+                        RoundedRectangle(cornerRadius: 15)
+                            .fill(Color.white.opacity(0.68))
                             .overlay(
-                                RoundedRectangle(cornerRadius: 14)
-                                    .stroke(Color.white.opacity(0.85), lineWidth: 1)
+                                RoundedRectangle(cornerRadius: 15)
+                                    .stroke(Color.white.opacity(0.9), lineWidth: 1)
                             )
                     )
                 }
-                .padding(14)
+                .padding(.leading, 12)
+                .padding(.trailing, 8)
+                .padding(.vertical, 8)
             }
         }
         .containerBackground(for: .widget) {
@@ -361,7 +365,7 @@ struct DailyWordWidgetExtension: Widget {
         StaticConfiguration(kind: kind, provider: Provider()) { entry in
             DailyWordWidgetExtensionEntryView(entry: entry)
         }
-        .configurationDisplayName("Daily Word")
+        .configurationDisplayName("Wordlet")
         .description("Clean and classic vocabulary learning.")
         .supportedFamilies([.systemSmall, .systemMedium, .accessoryRectangular, .accessoryInline, .accessoryCircular])
     }

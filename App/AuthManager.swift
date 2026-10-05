@@ -7,12 +7,14 @@ import AuthenticationServices
 public enum AuthError: LocalizedError {
     case invalidCredentials
     case emptyFields
+    case invalidUsername
     case supabaseError(String)
 
     public var errorDescription: String? {
         switch self {
         case .invalidCredentials:   return "E-posta veya şifre hatalı."
         case .emptyFields:          return "Lütfen tüm alanları doldurun."
+        case .invalidUsername:      return "Kullanıcı adı 4-8 karakter uzunluğunda olmalı ve en az bir büyük harf içermelidir."
         case .supabaseError(let msg): return msg
         }
     }
@@ -93,10 +95,18 @@ public class AuthManager: ObservableObject {
         }
     }
 
-    public func register(firstName: String, lastName: String, email: String, password: String) async throws {
+    public func register(username: String, firstName: String, lastName: String, email: String, password: String) async throws {
         let trimEmail = email.trimmingCharacters(in: .whitespaces).lowercased()
-        guard !firstName.isEmpty, !lastName.isEmpty, !trimEmail.isEmpty, !password.isEmpty else {
+        let trimUsername = username.trimmingCharacters(in: .whitespaces)
+        
+        guard !trimUsername.isEmpty, !firstName.isEmpty, !lastName.isEmpty, !trimEmail.isEmpty, !password.isEmpty else {
             throw AuthError.emptyFields
+        }
+        
+        let usernameRegex = "^(?=.*[A-Z]).{4,8}$"
+        let usernamePredicate = NSPredicate(format: "SELF MATCHES %@", usernameRegex)
+        guard usernamePredicate.evaluate(with: trimUsername) else {
+            throw AuthError.invalidUsername
         }
         
         do {
@@ -104,6 +114,7 @@ public class AuthManager: ObservableObject {
                 email: trimEmail,
                 password: password,
                 data: [
+                    "username": .string(trimUsername),
                     "first_name": .string(firstName),
                     "last_name": .string(lastName),
                     "full_name": .string("\(firstName) \(lastName)")

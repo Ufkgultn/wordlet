@@ -222,6 +222,7 @@ struct PremiumPaywallView: View {
                 Text(subtitle)
                     .font(.system(size: 13))
                     .foregroundColor(.white.opacity(0.6))
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
     }
@@ -272,6 +273,7 @@ struct PremiumPaywallView: View {
                         .font(.system(size: 12))
                         .foregroundColor(.white.opacity(0.6))
                         .multilineTextAlignment(.leading)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
                 
                 Spacer()

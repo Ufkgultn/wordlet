@@ -221,10 +221,11 @@ struct WordMatchBattleView: View {
     
     private func setupGame() {
         let words: [Word]
-        if !isRobot, let matchWords = matchManager.activeMatch?.wordIds, !matchWords.isEmpty {
+        if !isRobot, let match = matchManager.activeMatch, !match.wordIds.isEmpty {
             // Both players get the exact same words from database
-            let allWords = WordManager.shared.words(for: activeCEFRLevel)
-            let matched = matchWords.compactMap { wid in allWords.first(where: { $0.id == wid }) }
+            let matchLevel = CEFRLevel(rawValue: match.level) ?? activeCEFRLevel
+            let allWords = WordManager.shared.words(for: matchLevel)
+            let matched = match.wordIds.compactMap { wid in allWords.first(where: { $0.id == wid }) }
             words = matched.isEmpty ? Array(allWords.shuffled().prefix(totalPairs)) : matched
         } else {
             words = Array(WordManager.shared.words(for: activeCEFRLevel).shuffled().prefix(totalPairs))

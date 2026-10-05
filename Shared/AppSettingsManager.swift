@@ -76,7 +76,8 @@ public class AppSettingsManager {
     // MARK: - Premium & Limits
 
     public var isPremium: Bool {
-        get { defaults.bool(forKey: "isPremium") }
+        // v1.0 Launch: İlk sürümde tüm özellikler tüm kullanıcılara ücretsiz açık
+        get { true }
         set { defaults.set(newValue, forKey: "isPremium"); defaults.synchronize() }
     }
 
@@ -302,17 +303,12 @@ public final class ProgressManager {
         guard level != .a1 else { return false }
         guard let sourceLevel = level.previous else { return false }
         
-        let req = ProgressRequirements.requirements(for: sourceLevel)
-        let dailyTestCount = dailyTestsCount(for: sourceLevel)
-        
         let levelWords = WordManager.shared.words(for: sourceLevel).map { $0.id }
-        let knownLevelWordsCount = progress.knownWordIDs.filter { levelWords.contains($0) }.count
+        // User request: "tüm kelimeler bittikten sonra" (after all words are finished)
+        // We check if learned/known words for the level is equal to all words in that level.
+        let knownLevelWordsCount = progress.learnedWordIDs.filter { levelWords.contains($0) }.count
         
-        let earnedStars = progress.stars(for: sourceLevel)
-        
-        return dailyTestCount >= req.requiredDailyTests &&
-               knownLevelWordsCount >= req.requiredKnownWords &&
-               earnedStars >= 10
+        return knownLevelWordsCount >= levelWords.count
     }
 
     // MARK: Migration

@@ -28,6 +28,8 @@ struct DuelsView: View {
     @State private var selectedFriendOpponent: PublicProfile? = nil
     @State private var showFriendDuelActionDialog = false
     
+    @AppStorage("selectedMinigame") private var selectedMinigame: Int = 0
+    
     // Login Sheet
     @State private var showLoginSheet = false
     
@@ -37,6 +39,9 @@ struct DuelsView: View {
     
     // Matchmaking pulse animation
     @State private var radarPulse = false
+    
+    // Profile Detail
+    @State private var selectedProfileForDetail: PublicProfile? = nil
     
     var body: some View {
         ZStack {
@@ -70,44 +75,51 @@ struct DuelsView: View {
                 }
                 .padding(.top, 10)
             }
+            .blur(radius: (matchManager.isSearching || showJoinRoomSheet) ? 5 : 0)
+            
+            // Custom Pop-ups
+            if matchManager.isSearching {
+                matchmakingRadarModal
+                    .transition(.scale(scale: 0.9).combined(with: .opacity))
+                    .zIndex(100)
+            }
+            
+            if showJoinRoomSheet {
+                joinRoomModal
+                    .transition(.scale(scale: 0.9).combined(with: .opacity))
+                    .zIndex(100)
+            }
         }
         .onAppear {
             Task {
                 await socialManager.loadProfileAndFriends()
-                await socialManager.fetchLeaderboards()
+                await NotificationManager.shared.requestPermission()
+                await socialManager.startPollingRequests()
             }
         }
-        // Matchmaking Radar Sheet
-        .sheet(isPresented: $matchManager.isSearching) {
-            matchmakingRadarModal
-                .presentationDetents([.fraction(0.55)])
-                .presentationDragIndicator(.visible)
-        }
-        // Battle Arena Sheet (Random / Online match)
-        .sheet(isPresented: $matchManager.showBattleArena) {
+        // Popups and full screens
+        .fullScreenCover(isPresented: $matchManager.showBattleArena) {
             if let opp = matchManager.currentOpponent {
-                WordMatchBattleView(opponentName: opp.displayName, opponentProfile: opp, isRobot: false)
+                gameView(opponentName: opp.displayName, opponentProfile: opp, isRobot: false, robotLevel: 1)
             }
         }
         // Friend Duel Sheet
-        .sheet(isPresented: $showFriendDuel) {
+        .fullScreenCover(isPresented: $showFriendDuel) {
             if let friend = selectedFriendOpponent {
-                WordMatchBattleView(opponentName: friend.displayName, opponentProfile: friend, isRobot: false)
+                gameView(opponentName: friend.displayName, opponentProfile: friend, isRobot: false, robotLevel: 1)
             }
         }
         // Robot Duel Sheet
-        .sheet(isPresented: $showRobotDuel) {
-            WordMatchBattleView(opponentName: "Yapay Zeka Robotu", isRobot: true, robotLevel: selectedRobotLevel)
+        .fullScreenCover(isPresented: $showRobotDuel) {
+            gameView(opponentName: "Yapay Zeka Robotu", opponentProfile: nil, isRobot: true, robotLevel: selectedRobotLevel)
         }
         // Login Sheet
         .sheet(isPresented: $showLoginSheet) {
             LoginView()
         }
-        // Join Room Sheet
-        .sheet(isPresented: $showJoinRoomSheet) {
-            joinRoomModal
-                .presentationDetents([.fraction(0.45)])
-                .presentationDragIndicator(.visible)
+        // Profile Detail Sheet
+        .sheet(item: $selectedProfileForDetail) { profile in
+            ProfileDetailView(profile: profile)
         }
         .confirmationDialog(
             "Arkadaşla Düello",
@@ -125,6 +137,31 @@ struct DuelsView: View {
             Button("Vazgeç", role: .cancel) {}
         } message: { friend in
             Text("\(friend.displayName) ile canlı oda kurup oda kodunu paylaşabilir veya hemen alıştırma maçı yapabilirsin.")
+        }
+    }
+    
+    private func getGameMode(isRobot: Bool) -> Int {
+        if !isRobot, let active = matchManager.activeMatch {
+            if active.mode.contains("_") {
+                return Int(active.mode.split(separator: "_").last ?? "0") ?? 0
+            }
+        }
+        return selectedMinigame
+    }
+    
+    @ViewBuilder
+    private func gameView(opponentName: String, opponentProfile: PublicProfile?, isRobot: Bool, robotLevel: Int) -> some View {
+        switch getGameMode(isRobot: isRobot) {
+        case 1:
+            TypingBattleView(opponentName: opponentName, opponentProfile: opponentProfile, isRobot: isRobot, robotLevel: robotLevel)
+        case 2:
+            SpeedQuizBattleView(opponentName: opponentName, opponentProfile: opponentProfile, isRobot: isRobot, robotLevel: robotLevel)
+        case 3:
+            TrueFalseBattleView(opponentName: opponentName, opponentProfile: opponentProfile, isRobot: isRobot, robotLevel: robotLevel)
+        case 4:
+            JumbleBattleView(opponentName: opponentName, opponentProfile: opponentProfile, isRobot: isRobot, robotLevel: robotLevel)
+        default:
+            WordMatchBattleView(opponentName: opponentName, opponentProfile: opponentProfile, isRobot: isRobot, robotLevel: robotLevel)
         }
     }
     
@@ -226,8 +263,57 @@ struct DuelsView: View {
     
     private var arenaSectionContent: some View {
         VStack(spacing: 20) {
+            // Minigame Selector - Vertical Cards
+            VStack(alignment: .leading, spacing: 12) {
+                Text("🎮 OYUN MODU")
+                    .font(.caption.bold())
+                    .foregroundColor(Theme.accent)
+                    .padding(.horizontal, 20)
+                
+                VStack(spacing: 10) {
+                    gameModeCard(
+                        id: 0,
+                        icon: "rectangle.split.2x2.fill",
+                        title: "Eşleştirme",
+                        description: "Kelime ve anlamını hızlıca eşleştir. Klasik mod!",
+                        color: .blue
+                    )
+                    gameModeCard(
+                        id: 1,
+                        icon: "keyboard.fill",
+                        title: "Yazma Yarışı",
+                        description: "Türkçe kelimeyi gör, İngilizcesini hızla yaz.",
+                        color: .green
+                    )
+                    gameModeCard(
+                        id: 2,
+                        icon: "timer",
+                        title: "Hızlı Seçim",
+                        description: "4 şıktan doğru anlamı seç. Yanlışta -2 saniye!",
+                        color: .orange
+                    )
+                    gameModeCard(
+                        id: 3,
+                        icon: "checkmark.circle.fill",
+                        title: "Doğru / Yanlış",
+                        description: "Gösterilen eşleşme doğru mu? Anında karar ver!",
+                        color: .purple
+                    )
+                    gameModeCard(
+                        id: 4,
+                        icon: "textformat.abc",
+                        title: "Harf Avı",
+                        description: "Karışık harfleri sıraya diz, kelimeyi oluştur.",
+                        color: .pink
+                    )
+                }
+                .padding(.horizontal, 20)
+            }
+            .padding(.top, 10)
+            
             // HERO: Random 1v1 Matchmaking Card
             randomMatchHeroCard
+
             
             // Friends Quick Challenge Bar
             friendsQuickChallengeSection
@@ -235,6 +321,53 @@ struct DuelsView: View {
             // AI Robot Arena Grid
             aiRobotArenaSection
         }
+    }
+    
+    private func gameModeCard(id: Int, icon: String, title: String, description: String, color: Color) -> some View {
+        let isSelected = selectedMinigame == id
+        return Button(action: {
+            withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) { selectedMinigame = id }
+        }) {
+            HStack(spacing: 14) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 14)
+                        .fill(isSelected ? color : color.opacity(0.15))
+                        .frame(width: 48, height: 48)
+                    Image(systemName: icon)
+                        .font(.system(size: 20, weight: .semibold))
+                        .foregroundColor(isSelected ? .white : color)
+                }
+                
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(title)
+                        .font(.system(size: 15, weight: .bold))
+                        .foregroundColor(.white)
+                    Text(description)
+                        .font(.system(size: 12))
+                        .foregroundColor(.white.opacity(0.55))
+                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                
+                Spacer(minLength: 0)
+                
+                if isSelected {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 22))
+                        .foregroundColor(color)
+                }
+            }
+            .padding(12)
+            .background(
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(isSelected ? color.opacity(0.12) : Color.white.opacity(0.04))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16)
+                            .stroke(isSelected ? color.opacity(0.5) : Color.white.opacity(0.06), lineWidth: isSelected ? 1.5 : 1)
+                    )
+            )
+        }
+        .buttonStyle(.plain)
     }
     
     private var randomMatchHeroCard: some View {
@@ -507,7 +640,12 @@ struct DuelsView: View {
             // Ranked Table
             VStack(spacing: 8) {
                 ForEach(Array(list.enumerated()), id: \.element.id) { index, player in
-                    leaderboardRow(rank: index + 1, player: player)
+                    Button(action: {
+                        selectedProfileForDetail = player
+                    }) {
+                        leaderboardRow(rank: index + 1, player: player)
+                    }
+                    .buttonStyle(.plain)
                 }
             }
             .padding(.horizontal, 20)
@@ -582,6 +720,9 @@ struct DuelsView: View {
                 )
         }
         .frame(maxWidth: .infinity)
+        .onTapGesture {
+            selectedProfileForDetail = player
+        }
     }
     
     private func leaderboardRow(rank: Int, player: PublicProfile) -> some View {
@@ -831,35 +972,28 @@ struct DuelsView: View {
     
     private var matchmakingRadarModal: some View {
         ZStack {
-            Theme.background.ignoresSafeArea()
+            Color.black.opacity(0.6).ignoresSafeArea()
             
             VStack(spacing: 24) {
-                Capsule()
-                    .fill(Color.white.opacity(0.2))
-                    .frame(width: 40, height: 4)
-                    .padding(.top, 12)
-                
-                Spacer()
-                
                 // Animated Radar Wave
                 ZStack {
                     Circle()
                         .stroke(Theme.accent.opacity(0.2), lineWidth: 2)
-                        .frame(width: 180, height: 180)
+                        .frame(width: 140, height: 140)
                         .scaleEffect(radarPulse ? 1.3 : 0.8)
                         .opacity(radarPulse ? 0 : 0.8)
                     
                     Circle()
                         .stroke(Theme.accent.opacity(0.35), lineWidth: 2)
-                        .frame(width: 120, height: 120)
+                        .frame(width: 100, height: 100)
                         .scaleEffect(radarPulse ? 1.2 : 0.9)
                     
                     Circle()
                         .fill(Theme.accent.opacity(0.15))
-                        .frame(width: 70, height: 70)
+                        .frame(width: 60, height: 60)
                     
                     Image(systemName: "bolt.fill")
-                        .font(.system(size: 32))
+                        .font(.system(size: 28))
                         .foregroundColor(Theme.accent)
                 }
                 .onAppear {
@@ -867,20 +1001,21 @@ struct DuelsView: View {
                         radarPulse = true
                     }
                 }
+                .padding(.top, 10)
                 
-                VStack(spacing: 10) {
+                VStack(spacing: 12) {
                     Text(matchManager.roomCode != nil ? "Özel Lobi Bekleniyor" : "1v1 Düello Aranıyor")
-                        .font(.title2.bold())
+                        .font(.title3.bold())
                         .foregroundColor(.white)
                     
                     if let code = matchManager.roomCode {
-                        VStack(spacing: 4) {
+                        VStack(spacing: 6) {
                             Text("ODA KODU")
-                                .font(.caption.bold())
+                                .font(.caption2.bold())
                                 .foregroundColor(Theme.accent)
                             
                             Text(code)
-                                .font(.system(size: 42, weight: .black, design: .monospaced))
+                                .font(.system(size: 38, weight: .black, design: .monospaced))
                                 .foregroundColor(.white)
                                 .padding(.horizontal, 24)
                                 .padding(.vertical, 8)
@@ -888,8 +1023,8 @@ struct DuelsView: View {
                                 .overlay(RoundedRectangle(cornerRadius: 14).stroke(Theme.accent.opacity(0.4), lineWidth: 1.5))
                             
                             Text("Arkadaşının bu kodu girmesini bekle...")
-                                .font(.caption2)
-                                .foregroundColor(.white.opacity(0.5))
+                                .font(.caption)
+                                .foregroundColor(.white.opacity(0.6))
                                 .padding(.top, 4)
                         }
                         .padding(.vertical, 6)
@@ -897,34 +1032,39 @@ struct DuelsView: View {
                     
                     Text(matchManager.searchStatus)
                         .font(.subheadline)
-                        .foregroundColor(.white.opacity(0.6))
+                        .foregroundColor(.white.opacity(0.7))
                         .multilineTextAlignment(.center)
-                        .padding(.horizontal, 24)
+                        .padding(.horizontal, 10)
                     
                     if let err = matchManager.errorMessage {
                         Text(err)
                             .font(.caption)
                             .foregroundColor(.red)
                             .multilineTextAlignment(.center)
-                            .padding(.horizontal, 20)
                     }
                 }
-                
-                Spacer()
                 
                 Button(action: {
                     matchManager.cancelSearch()
                 }) {
                     Text("İptal Et")
                         .font(.headline)
-                        .foregroundColor(.white.opacity(0.7))
+                        .foregroundColor(.white.opacity(0.8))
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 14)
-                        .background(RoundedRectangle(cornerRadius: 14).fill(Color.white.opacity(0.08)))
-                        .padding(.horizontal, 24)
+                        .background(RoundedRectangle(cornerRadius: 14).fill(Color.white.opacity(0.1)))
                 }
-                .padding(.bottom, 24)
+                .padding(.horizontal, 10)
+                .padding(.bottom, 10)
             }
+            .padding(24)
+            .background(
+                RoundedRectangle(cornerRadius: 30)
+                    .fill(Theme.background)
+                    .shadow(color: Theme.accent.opacity(0.2), radius: 25)
+                    .overlay(RoundedRectangle(cornerRadius: 30).stroke(Color.white.opacity(0.1), lineWidth: 1))
+            )
+            .padding(.horizontal, 30)
         }
     }
     
@@ -932,32 +1072,28 @@ struct DuelsView: View {
     
     private var joinRoomModal: some View {
         ZStack {
-            Theme.background.ignoresSafeArea()
+            Color.black.opacity(0.6).ignoresSafeArea()
+                .onTapGesture { showJoinRoomSheet = false }
             
-            VStack(spacing: 20) {
-                Capsule()
-                    .fill(Color.white.opacity(0.2))
-                    .frame(width: 40, height: 4)
-                    .padding(.top, 12)
-                
-                VStack(spacing: 6) {
+            VStack(spacing: 24) {
+                VStack(spacing: 8) {
                     Text("Özel Odaya Katıl")
-                        .font(.title2.bold())
+                        .font(.title3.bold())
                         .foregroundColor(.white)
-                    Text("Arkadaşının paylaştığı 4 haneli oda kodunu gir.")
-                        .font(.caption)
+                    Text("Arkadaşının paylaştığı kodu gir.")
+                        .font(.subheadline)
                         .foregroundColor(.white.opacity(0.6))
                 }
                 .padding(.top, 10)
                 
                 TextField("Örn: 4821", text: $inputRoomCode)
-                    .font(.system(size: 28, weight: .bold, design: .monospaced))
+                    .font(.system(size: 32, weight: .black, design: .monospaced))
                     .multilineTextAlignment(.center)
-                    .padding(14)
+                    .padding(.vertical, 16)
                     .background(RoundedRectangle(cornerRadius: 14).fill(Color.white.opacity(0.08)))
                     .foregroundColor(Theme.accent)
                     .keyboardType(.numberPad)
-                    .padding(.horizontal, 40)
+                    .padding(.horizontal, 20)
                 
                 if let err = matchManager.errorMessage {
                     Text(err)
@@ -965,28 +1101,47 @@ struct DuelsView: View {
                         .foregroundColor(.red)
                 }
                 
-                Button(action: {
-                    Task {
-                        await matchManager.joinPrivateRoom(code: inputRoomCode)
-                        if matchManager.showBattleArena {
-                            showJoinRoomSheet = false
-                            inputRoomCode = ""
+                VStack(spacing: 12) {
+                    Button(action: {
+                        Task {
+                            await matchManager.joinPrivateRoom(code: inputRoomCode)
+                            if matchManager.showBattleArena {
+                                showJoinRoomSheet = false
+                                inputRoomCode = ""
+                            }
                         }
+                    }) {
+                        Text("Odaya Bağlan")
+                            .font(.headline.bold())
+                            .foregroundColor(.black)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 16)
+                            .background(Theme.accent)
+                            .cornerRadius(14)
                     }
-                }) {
-                    Text("Odaya Bağlan")
-                        .font(.headline.bold())
-                        .foregroundColor(.black)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 14)
-                        .background(Theme.accent)
-                        .cornerRadius(14)
-                        .padding(.horizontal, 40)
+                    .disabled(inputRoomCode.trimmingCharacters(in: .whitespaces).isEmpty)
+                    
+                    Button(action: {
+                        showJoinRoomSheet = false
+                    }) {
+                        Text("Vazgeç")
+                            .font(.headline)
+                            .foregroundColor(.white.opacity(0.7))
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 14)
+                    }
                 }
-                .disabled(inputRoomCode.trimmingCharacters(in: .whitespaces).isEmpty)
-                
-                Spacer()
+                .padding(.horizontal, 10)
+                .padding(.bottom, 10)
             }
+            .padding(24)
+            .background(
+                RoundedRectangle(cornerRadius: 30)
+                    .fill(Theme.background)
+                    .shadow(color: Theme.accent.opacity(0.2), radius: 25)
+                    .overlay(RoundedRectangle(cornerRadius: 30).stroke(Color.white.opacity(0.1), lineWidth: 1))
+            )
+            .padding(.horizontal, 30)
         }
     }
     

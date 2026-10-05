@@ -299,65 +299,25 @@ private struct LevelCard: View {
                             HStack {
                                 Image(systemName: "lock.fill")
                                     .font(.caption)
-                                Text("Sınav Hakkı İçin Gereksinimler")
+                                Text("Sınav Hakkı İçin Gereksinim")
                                     .font(.caption.weight(.semibold))
                             }
                             .foregroundColor(.white.opacity(0.6))
                             
-                            // Gereksinim 1: Günlük Test
+                            // Gereksinim: Tüm Kelimeleri Öğrenmek
                             VStack(alignment: .leading, spacing: 4) {
                                 HStack {
-                                    Text("\(sourceLevel.rawValue) Günlük Test")
+                                    Text("\(sourceLevel.rawValue) Tüm Kelimeler")
                                         .font(.caption2)
                                     Spacer()
-                                    Text("\(min(dailyTestCount, req.requiredDailyTests))/\(req.requiredDailyTests)")
+                                    Text("\(min(seenCount, wordCount))/\(wordCount)")
                                         .font(.caption2.bold())
                                 }
                                 GeometryReader { geo in
                                     ZStack(alignment: .leading) {
                                         Capsule().fill(Color.white.opacity(0.1))
-                                        Capsule().fill(dailyTestCount >= req.requiredDailyTests ? Theme.correct : Theme.accent)
-                                            .frame(width: geo.size.width * CGFloat(min(dailyTestCount, req.requiredDailyTests)) / CGFloat(req.requiredDailyTests))
-                                    }
-                                }
-                                .frame(height: 4)
-                            }
-                            .foregroundColor(.white.opacity(0.7))
-                            
-                            // Gereksinim 2: Bilinen Kelime
-                            VStack(alignment: .leading, spacing: 4) {
-                                HStack {
-                                    Text("\(sourceLevel.rawValue) Bildiğin Kelimeler")
-                                        .font(.caption2)
-                                    Spacer()
-                                    Text("\(min(knownCount, req.requiredKnownWords))/\(req.requiredKnownWords)")
-                                        .font(.caption2.bold())
-                                }
-                                GeometryReader { geo in
-                                    ZStack(alignment: .leading) {
-                                        Capsule().fill(Color.white.opacity(0.1))
-                                        Capsule().fill(knownCount >= req.requiredKnownWords ? Theme.correct : Theme.accent)
-                                            .frame(width: geo.size.width * CGFloat(min(knownCount, req.requiredKnownWords)) / CGFloat(req.requiredKnownWords))
-                                    }
-                                }
-                                .frame(height: 4)
-                            }
-                            .foregroundColor(.white.opacity(0.7))
-
-                            // Gereksinim 3: Alıştırma Yıldızları
-                            VStack(alignment: .leading, spacing: 4) {
-                                HStack {
-                                    Text("\(sourceLevel.rawValue) Alıştırmaları")
-                                        .font(.caption2)
-                                    Spacer()
-                                    Text("\(starsEarned)/10 Yıldız")
-                                        .font(.caption2.bold())
-                                }
-                                GeometryReader { geo in
-                                    ZStack(alignment: .leading) {
-                                        Capsule().fill(Color.white.opacity(0.1))
-                                        Capsule().fill(starsEarned >= 10 ? Theme.correct : Theme.accent)
-                                            .frame(width: geo.size.width * CGFloat(min(starsEarned, 10)) / 10.0)
+                                        Capsule().fill(seenCount >= wordCount ? Theme.correct : Theme.accent)
+                                            .frame(width: geo.size.width * CGFloat(min(seenCount, wordCount)) / CGFloat(wordCount))
                                     }
                                 }
                                 .frame(height: 4)
@@ -495,13 +455,13 @@ struct LevelInfoView: View {
                 // Details
                 VStack(alignment: .leading, spacing: 20) {
                     if level.next != nil {
-                        let req = ProgressRequirements.requirements(for: level)
+                        let levelWordsCount = WordManager.shared.words(for: level).count
                         
                         infoRow(
-                            icon: "brain.head.profile",
-                            title: "Alıştırma Seviyeleri",
-                            value: "3 Yıldız",
-                            desc: "Seviye atlama sınavını açmak için \(level.rawValue).1, \(level.rawValue).2 ve \(level.rawValue).3 alıştırmalarını başarıyla bitirip 3 yıldız kazanmalısınız."
+                            icon: "checkmark.circle.fill",
+                            title: "Kelimeleri Öğren",
+                            value: "\(levelWordsCount) Kelime",
+                            desc: "Sınavı açmak için bu seviyedeki tüm kelimeleri öğrenmelisiniz."
                         )
                         
                         Divider().background(Color.white.opacity(0.1))
@@ -509,8 +469,8 @@ struct LevelInfoView: View {
                         infoRow(
                             icon: "pencil.and.list.clipboard",
                             title: "Seviye Atlama Sınavı",
-                            value: "\(req.examQuestionCount) Soru",
-                            desc: "Tüm alıştırmalar tamamlandıktan sonra açılan \(req.examQuestionCount) soruluk baraj sınavından en az %70 başarı elde etmelisiniz."
+                            value: "Baraj Sınavı",
+                            desc: "Tüm kelimeler öğrenildikten sonra açılan baraj sınavından en az %70 başarı elde etmelisiniz."
                         )
                     } else {
                         infoRow(
