@@ -145,4 +145,73 @@ BEGIN
   END IF;
 END $$;
 
+-- 11. Add push_token column to profiles table
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS push_token TEXT;
+
+-- 12. APNs Push Notification Triggers via pg_net (Calls Supabase Edge Function send-push)
+CREATE EXTENSION IF NOT EXISTS pg_net WITH SCHEMA extensions;
+
+CREATE OR REPLACE FUNCTION public.notify_match_invite()
+RETURNS TRIGGER AS $$
+DECLARE
+  sender_name TEXT;
+BEGIN
+  -- Send notification when an invite is created for player 2
+  IF NEW.player2_id IS NOT NULL AND NEW.status = 'waiting' THEN
+    SELECT display_name INTO sender_name FROM public.profiles WHERE id = NEW.player1_id;
+    
+    PERFORM net.http_post(
+      url := 'https://bmzlgmvtybdsyfgpxpgl.supabase.co/functions/v1/send-push',
+      headers := jsonb_build_object(
+        'Content-Type', 'application/json'
+      ),
+      body := jsonb_build_object(
+        'recipient_user_id', NEW.player2_id,
+        'title', 'Kelime Düellosu Daveti! ⚔️',
+        'body', COALESCE(sender_name, 'Bir arkadaşın') || ' seni kelime düellosuna davet etti!',
+        'data', jsonb_build_object('match_id', NEW.id, 'type', 'match_invite')
+      )
+    );
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS tr_notify_match_invite ON public.matches;
+CREATE TRIGGER tr_notify_match_invite
+  AFTER INSERT ON public.matches
+  FOR EACH ROW
+  EXECUTE FUNCTION public.notify_match_invite();
+
+CREATE OR REPLACE FUNCTION public.notify_friend_request()
+RETURNS TRIGGER AS $$
+DECLARE
+  sender_name TEXT;
+BEGIN
+  IF NEW.status = 'pending' THEN
+    SELECT display_name INTO sender_name FROM public.profiles WHERE id = NEW.sender_id;
+    
+    PERFORM net.http_post(
+      url := 'https://bmzlgmvtybdsyfgpxpgl.supabase.co/functions/v1/send-push',
+      headers := jsonb_build_object(
+        'Content-Type', 'application/json'
+      ),
+      body := jsonb_build_object(
+        'recipient_user_id', NEW.receiver_id,
+        'title', 'Yeni Arkadaşlık İsteği! 👋',
+        'body', COALESCE(sender_name, 'Bir kullanıcı') || ' sana arkadaşlık isteği gönderdi!',
+        'data', jsonb_build_object('friendship_id', NEW.id, 'type', 'friend_request')
+      )
+    );
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS tr_notify_friend_request ON public.friendships;
+CREATE TRIGGER tr_notify_friend_request
+  AFTER INSERT ON public.friendships
+  FOR EACH ROW
+  EXECUTE FUNCTION public.notify_friend_request();
+
 

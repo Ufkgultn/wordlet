@@ -47,7 +47,7 @@ public class SocialManager: NSObject, ObservableObject, UNUserNotificationCenter
             self.myProfile = local
         }
         requestNotificationPermission()
-        UNUserNotificationCenter.current().delegate = self
+        // UNUserNotificationCenter delegate and request logic is now handled in AppDelegate
     }
     
     nonisolated public func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification) async -> UNNotificationPresentationOptions {
@@ -55,11 +55,7 @@ public class SocialManager: NSObject, ObservableObject, UNUserNotificationCenter
     }
     
     private func requestNotificationPermission() {
-        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound]) { granted, error in
-            if let error = error {
-                print("Notification permission error: \(error)")
-            }
-        }
+        // Now handled in AppDelegate
     }
     
     public func triggerLocalNotification(title: String, body: String) {
@@ -151,6 +147,11 @@ public class SocialManager: NSObject, ObservableObject, UNUserNotificationCenter
             await fetchRealRequests(isInitial: true)
             await fetchIncomingMatchInvites()
             await fetchLeaderboards()
+            
+            // Sync pending push token if available
+            if let pendingToken = UserDefaults.standard.string(forKey: "pendingPushToken") {
+                await updatePushToken(pendingToken)
+            }
             
             // Start Polling
             startPolling()
@@ -283,6 +284,31 @@ public class SocialManager: NSObject, ObservableObject, UNUserNotificationCenter
             .execute()
         
         await fetchLeaderboards()
+    }
+    
+    public func updatePushToken(_ token: String) async {
+        UserDefaults.standard.set(token, forKey: "pendingPushToken")
+        guard let profile = myProfile else { return }
+        
+        // Sadece eğer token değişmişse veritabanını güncelle
+        if profile.pushToken != token {
+            var updated = profile
+            updated.pushToken = token
+            
+            saveLocalProfile(updated)
+            self.myProfile = updated
+            
+            do {
+                try await client
+                    .from("profiles")
+                    .update(["push_token": token])
+                    .eq("id", value: profile.id)
+                    .execute()
+                print("Push token successfully updated in Supabase.")
+            } catch {
+                print("Failed to update push token in Supabase: \(error)")
+            }
+        }
     }
     
     public func searchUserByUsername(username: String) async -> PublicProfile? {

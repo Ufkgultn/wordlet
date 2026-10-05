@@ -176,17 +176,17 @@ struct DuelsView: View {
             isPresented: $showFriendDuelActionDialog,
             presenting: selectedFriendOpponent
         ) { friend in
-            Button("⚡️ Canlı Özel Oda Kur") {
+            Button("⚔️ Canlı Düello Daveti Gönder") {
                 Task {
-                    await matchManager.createPrivateRoom(gameMode: selectedMinigame)
+                    await matchManager.sendDirectInvite(to: friend, gameMode: selectedMinigame)
                 }
             }
-            Button("🎯 Hızlı Alıştırma Düellosu") {
+            Button("🤖 Çevrimdışı Oyna") {
                 showFriendDuel = true
             }
             Button("Vazgeç", role: .cancel) {}
         } message: { friend in
-            Text("\(friend.displayName) ile canlı oda kurup oda kodunu paylaşabilir veya hemen alıştırma maçı yapabilirsin.")
+            Text("\(friend.displayName) kullanıcısına anlık düello daveti gönderebilirsin.")
         }
     }
     
