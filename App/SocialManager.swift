@@ -258,6 +258,7 @@ public class SocialManager: ObservableObject {
         guard let profile = myProfile else { return }
         
         let requestData: [String: AnyJSON] = [
+            "id": .string(UUID().uuidString),
             "sender_id": .string(profile.id),
             "receiver_id": .string(receiverId),
             "status": .string("pending")
