@@ -5,9 +5,9 @@ struct SpeedQuizBattleView: View {
     var opponentProfile: PublicProfile? = nil
     var isRobot: Bool = false
     var robotLevel: Int = 1
+    var targetCEFRLevel: CEFRLevel? = nil
     
     @Environment(\.dismiss) var dismiss
-    @AppStorage("robotDuelLevel") private var robotDuelLevelStorage: Int = 1
     @ObservedObject private var matchManager = MatchManager.shared
     
     @State private var words: [Word] = []
@@ -24,7 +24,7 @@ struct SpeedQuizBattleView: View {
     @State private var timer: Timer? = nil
     @State private var opponentTimer: Timer? = nil
     
-    private var activeCEFRLevel: CEFRLevel { ProgressManager.shared.progress.currentLevel }
+    private var activeCEFRLevel: CEFRLevel { targetCEFRLevel ?? ProgressManager.shared.progress.currentLevel }
     
     var body: some View {
         ZStack {
@@ -155,7 +155,14 @@ struct SpeedQuizBattleView: View {
         withAnimation {
             if userMatches > opponentMatches {
                 gameState = .won; earnedXP = isRobot ? (15 + robotLevel * 2) : 50
-                if isRobot && robotLevel == robotDuelLevelStorage { robotDuelLevelStorage = min(30, robotDuelLevelStorage + 1) }
+                if isRobot {
+                    let key = "robotDuelLevel_\(activeCEFRLevel.rawValue)"
+                    let currentLevel = UserDefaults.standard.integer(forKey: key)
+                    let stored = currentLevel == 0 ? 1 : currentLevel
+                    if robotLevel == stored {
+                        UserDefaults.standard.set(min(30, stored + 1), forKey: key)
+                    }
+                }
                 Task { await SocialManager.shared.recordDuelWin(xpGained: earnedXP, isWin: true) }
             } else if userMatches < opponentMatches {
                 gameState = .lost; earnedXP = isRobot ? 5 : 15

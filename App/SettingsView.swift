@@ -27,6 +27,7 @@ struct SettingsView: View {
     @State private var selectedPhotoData: Data? = nil
     @State private var avatarPickerMode = 0 // 0: Avatar Emojisi, 1: Galeri Fotoğrafı
     @State private var showSaveProfileSuccess = false
+    @State private var profileSaveError: String? = nil
     @State private var showLoginSheet = false
     @State private var showDeleteAccountAlert = false
     
@@ -98,6 +99,14 @@ struct SettingsView: View {
         }
         .sheet(isPresented: $showLoginSheet) {
             LoginView()
+        }
+        .alert("Hata", isPresented: Binding(
+            get: { profileSaveError != nil },
+            set: { if !$0 { profileSaveError = nil } }
+        )) {
+            Button("Tamam", role: .cancel) { }
+        } message: {
+            Text(profileSaveError ?? "")
         }
     }
     
@@ -358,19 +367,24 @@ struct SettingsView: View {
             Button(action: {
                 Task {
                     let combinedName = "\(editFirstName) \(editLastName)".trimmingCharacters(in: .whitespaces)
-                    try? await socialManager.updateProfile(
-                        username: editUsername,
-                        displayName: combinedName.isEmpty ? "Kullanıcı" : combinedName,
-                        avatarEmoji: editAvatarEmoji
-                    )
-                    UINotificationFeedbackGenerator().notificationOccurred(.success)
-                    withAnimation {
-                        showSaveProfileSuccess = true
-                    }
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                    do {
+                        try await socialManager.updateProfile(
+                            username: editUsername,
+                            displayName: combinedName.isEmpty ? "Kullanıcı" : combinedName,
+                            avatarEmoji: editAvatarEmoji
+                        )
+                        UINotificationFeedbackGenerator().notificationOccurred(.success)
                         withAnimation {
-                            showSaveProfileSuccess = false
+                            showSaveProfileSuccess = true
                         }
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                            withAnimation {
+                                showSaveProfileSuccess = false
+                            }
+                        }
+                    } catch {
+                        UINotificationFeedbackGenerator().notificationOccurred(.error)
+                        profileSaveError = error.localizedDescription
                     }
                 }
             }) {

@@ -11,6 +11,7 @@ struct HomeView: View {
     @State private var showDailyTest = false
     @State private var showPaywall = false
     @State private var showLoginSheet = false
+    @State private var showLevelScreen = false
 
     @StateObject private var socialManager = SocialManager.shared
 
@@ -96,6 +97,9 @@ struct HomeView: View {
         .sheet(isPresented: $showLoginSheet) {
             LoginView()
         }
+        .sheet(isPresented: $showLevelScreen) {
+            LevelView()
+        }
     }
 
     // MARK: - Floating Header
@@ -103,7 +107,12 @@ struct HomeView: View {
     private var floatingHeader: some View {
         VStack(spacing: 16) {
             HStack(spacing: 10) {
-                LevelBadge(level: currentLevel)
+                Button {
+                    showLevelScreen = true
+                } label: {
+                    LevelBadge(level: currentLevel)
+                }
+                .buttonStyle(.plain)
 
                 Button {
                     if !authManager.isAuthenticated || authManager.isGuest {

@@ -37,13 +37,6 @@ struct ContentView: View {
                     Label("Kelimelerim", systemImage: "books.vertical.fill")
                 }
 
-            LevelView()
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .appBackground()
-                .tabItem {
-                    Label("Seviyeler", systemImage: "chart.bar.fill")
-                }
-
             SettingsView()
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .appBackground()

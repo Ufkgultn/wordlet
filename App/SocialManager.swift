@@ -4,13 +4,15 @@ import Supabase
 import UserNotifications
 
 @MainActor
-public class SocialManager: ObservableObject {
+public class SocialManager: NSObject, ObservableObject, UNUserNotificationCenterDelegate {
     public static let shared = SocialManager()
     
     @Published public var myProfile: PublicProfile? = nil
     @Published public var friends: [PublicProfile] = []
     @Published public var pendingRequests: [FriendRequest] = []
+    @Published public var sentRequestReceiverIds: Set<String> = []
     @Published public var friendsLeaderboard: [PublicProfile] = []
+    @Published public var incomingMatchInvites: [DuelMatch] = []
     
     // Notifications
     @Published public var showInAppNotification: Bool = false
@@ -39,11 +41,17 @@ public class SocialManager: ObservableObject {
         }
     }
     
-    private init() {
+    private override init() {
+        super.init()
         if let local = loadLocalProfile() {
             self.myProfile = local
         }
         requestNotificationPermission()
+        UNUserNotificationCenter.current().delegate = self
+    }
+    
+    nonisolated public func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification) async -> UNNotificationPresentationOptions {
+        return [.banner, .sound, .badge]
     }
     
     private func requestNotificationPermission() {
@@ -141,6 +149,7 @@ public class SocialManager: ObservableObject {
             // 2. Fetch real friends and requests
             await fetchRealFriends()
             await fetchRealRequests(isInitial: true)
+            await fetchIncomingMatchInvites()
             await fetchLeaderboards()
             
             // Start Polling
@@ -219,8 +228,48 @@ public class SocialManager: ObservableObject {
     
     public func updateProfile(username: String, displayName: String, avatarEmoji: String) async throws {
         guard let profile = myProfile else { return }
+        
+        let newUsername = username.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        
+        if newUsername != profile.username {
+            let currentYear = Calendar.current.component(.year, from: Date())
+            let yearKey = "usernameChangesYear"
+            let countKey = "usernameChangesCount"
+            
+            let savedYear = UserDefaults.standard.integer(forKey: yearKey)
+            var count = UserDefaults.standard.integer(forKey: countKey)
+            
+            if savedYear != currentYear {
+                count = 0
+                UserDefaults.standard.set(currentYear, forKey: yearKey)
+            }
+            
+            if count >= 2 {
+                throw NSError(domain: "SocialManager", code: 403, userInfo: [NSLocalizedDescriptionKey: "Kullanıcı adınızı yılda en fazla 2 kez değiştirebilirsiniz."])
+            }
+            
+            do {
+                let existingUsers: [PublicProfile] = try await client
+                    .from("profiles")
+                    .select()
+                    .eq("username", value: newUsername)
+                    .execute()
+                    .value
+                
+                if !existingUsers.isEmpty {
+                    throw NSError(domain: "SocialManager", code: 409, userInfo: [NSLocalizedDescriptionKey: "Bu kullanıcı adı zaten alınmış."])
+                }
+            } catch let error as NSError where error.domain == "SocialManager" {
+                throw error
+            } catch {
+                throw NSError(domain: "SocialManager", code: 500, userInfo: [NSLocalizedDescriptionKey: "Kullanıcı adı kontrol edilemedi. Lütfen tekrar deneyin."])
+            }
+            
+            UserDefaults.standard.set(count + 1, forKey: countKey)
+        }
+        
         var updated = profile
-        updated.username = username.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        updated.username = newUsername
         updated.displayName = displayName.trimmingCharacters(in: .whitespaces)
         updated.avatarEmoji = avatarEmoji
         
@@ -268,6 +317,8 @@ public class SocialManager: ObservableObject {
             .from("friendships")
             .insert(requestData)
             .execute()
+            
+        self.sentRequestReceiverIds.insert(receiverId)
     }
     
     public func acceptFriendRequest(requestId: String) async {
@@ -353,6 +404,16 @@ public class SocialManager: ObservableObject {
                 .eq("status", value: "pending")
                 .execute()
                 .value
+                
+            let sent: [FriendshipWrapper] = try await client
+                .from("friendships")
+                .select("id, receiver_id, status")
+                .eq("sender_id", value: profile.id)
+                .eq("status", value: "pending")
+                .execute()
+                .value
+            
+            self.sentRequestReceiverIds = Set(sent.compactMap { $0.receiver_id })
             
             let previousCount = self.pendingRequests.count
             self.pendingRequests = received.map { wrapper in
@@ -387,6 +448,9 @@ public class SocialManager: ObservableObject {
             while !Task.isCancelled {
                 try? await Task.sleep(nanoseconds: 10_000_000_000) // Poll every 10 seconds
                 await fetchRealRequests(isInitial: false)
+                await fetchIncomingMatchInvites()
+                await fetchRealFriends()
+                await fetchLeaderboards()
             }
         }
     }
@@ -412,4 +476,40 @@ struct ProfileSubWrapper: Codable {
     let username: String
     let display_name: String
     let avatar_emoji: String
+}
+import Foundation
+import SwiftUI
+
+extension SocialManager {
+    // Polled inside startPolling()
+    public func fetchIncomingMatchInvites() async {
+        guard let profile = myProfile else { return }
+        
+        do {
+            let matches: [DuelMatch] = try await SupabaseManager.shared.client
+                .from("matches")
+                .select()
+                .eq("player2_id", value: profile.id)
+                .eq("status", value: "waiting")
+                .execute()
+                .value
+            
+            // Only keep mode starting with "friend_"
+            let invites = matches.filter { $0.mode.starts(with: "friend_") }
+            
+            await MainActor.run {
+                if invites.count > self.incomingMatchInvites.count {
+                    if let newest = invites.last {
+                        self.triggerLocalNotification(
+                            title: "Yeni Maç Daveti!",
+                            body: "\(newest.player1Name) seni düelloya davet ediyor!"
+                        )
+                    }
+                }
+                self.incomingMatchInvites = invites
+            }
+        } catch {
+            print("Fetch match invites error: \(error)")
+        }
+    }
 }

@@ -16,17 +16,31 @@ struct DuelsView: View {
     @State private var searchedProfile: PublicProfile? = nil
     @State private var searchError = ""
     @State private var isSearchingUser = false
-    @State private var showRequestSentSuccess = false
     
     // Robot Duel State
-    @AppStorage("robotDuelLevel") private var robotDuelLevelStorage: Int = 1
     @State private var showRobotDuel = false
     @State private var selectedRobotLevel = 1
+    @State private var selectedAITargetLevel: CEFRLevel = .a1
+    
+    private var currentRobotLevelStorage: Int {
+        let val = UserDefaults.standard.integer(forKey: "robotDuelLevel_\(selectedAITargetLevel.rawValue)")
+        return val == 0 ? 1 : val
+    }
     
     // Friend Duel State
     @State private var showFriendDuel = false
     @State private var selectedFriendOpponent: PublicProfile? = nil
     @State private var showFriendDuelActionDialog = false
+    
+    @State private var showModeRoom = false
+    
+    private let gameModes = [
+        (0, "Eşleştirme Odası", "rectangle.split.2x2.fill", "Kelime ve anlamını hızlıca eşleştir. Klasik mod!", Color.blue),
+        (1, "Yazma Yarışı Odası", "keyboard.fill", "Türkçe kelimeyi gör, İngilizcesini hızla yaz.", Color.green),
+        (2, "Hızlı Seçim Odası", "timer", "4 şıktan doğru anlamı seç. Yanlışta -2 saniye!", Color.orange),
+        (3, "Doğru / Yanlış Odası", "checkmark.circle.fill", "Gösterilen eşleşme doğru mu? Anında karar ver!", Color.purple),
+        (4, "Harf Avı Odası", "textformat.abc", "Karışık harfleri sıraya diz, kelimeyi oluştur.", Color.pink)
+    ]
     
     @AppStorage("selectedMinigame") private var selectedMinigame: Int = 0
     
@@ -140,7 +154,18 @@ struct DuelsView: View {
         }
         // Robot Duel Sheet
         .fullScreenCover(isPresented: $showRobotDuel) {
-            gameView(opponentName: "Yapay Zeka Robotu", opponentProfile: nil, isRobot: true, robotLevel: selectedRobotLevel)
+            gameView(opponentName: "Yapay Zeka Robotu", opponentProfile: nil, isRobot: true, robotLevel: selectedRobotLevel, targetCEFRLevel: selectedAITargetLevel)
+        }
+        // Mode Room Sheet
+        .fullScreenCover(isPresented: $showModeRoom) {
+            let mode = gameModes.first(where: { $0.0 == selectedMinigame }) ?? gameModes[0]
+            ModeRoomView(
+                modeId: mode.0,
+                modeTitle: mode.1,
+                modeDescription: mode.3,
+                modeIcon: mode.2,
+                modeColor: mode.4
+            )
         }
         // Login Sheet
         .sheet(isPresented: $showLoginSheet) {
@@ -175,18 +200,18 @@ struct DuelsView: View {
     }
     
     @ViewBuilder
-    private func gameView(opponentName: String, opponentProfile: PublicProfile?, isRobot: Bool, robotLevel: Int) -> some View {
+    private func gameView(opponentName: String, opponentProfile: PublicProfile?, isRobot: Bool, robotLevel: Int, targetCEFRLevel: CEFRLevel? = nil) -> some View {
         switch getGameMode(isRobot: isRobot) {
         case 1:
-            TypingBattleView(opponentName: opponentName, opponentProfile: opponentProfile, isRobot: isRobot, robotLevel: robotLevel)
+            TypingBattleView(opponentName: opponentName, opponentProfile: opponentProfile, isRobot: isRobot, robotLevel: robotLevel, targetCEFRLevel: targetCEFRLevel)
         case 2:
-            SpeedQuizBattleView(opponentName: opponentName, opponentProfile: opponentProfile, isRobot: isRobot, robotLevel: robotLevel)
+            SpeedQuizBattleView(opponentName: opponentName, opponentProfile: opponentProfile, isRobot: isRobot, robotLevel: robotLevel, targetCEFRLevel: targetCEFRLevel)
         case 3:
-            TrueFalseBattleView(opponentName: opponentName, opponentProfile: opponentProfile, isRobot: isRobot, robotLevel: robotLevel)
+            TrueFalseBattleView(opponentName: opponentName, opponentProfile: opponentProfile, isRobot: isRobot, robotLevel: robotLevel, targetCEFRLevel: targetCEFRLevel)
         case 4:
-            JumbleBattleView(opponentName: opponentName, opponentProfile: opponentProfile, isRobot: isRobot, robotLevel: robotLevel)
+            JumbleBattleView(opponentName: opponentName, opponentProfile: opponentProfile, isRobot: isRobot, robotLevel: robotLevel, targetCEFRLevel: targetCEFRLevel)
         default:
-            WordMatchBattleView(opponentName: opponentName, opponentProfile: opponentProfile, isRobot: isRobot, robotLevel: robotLevel)
+            WordMatchBattleView(opponentName: opponentName, opponentProfile: opponentProfile, isRobot: isRobot, robotLevel: robotLevel, targetCEFRLevel: targetCEFRLevel)
         }
     }
     
@@ -286,301 +311,140 @@ struct DuelsView: View {
     
     // MARK: - 2. Arena Section Content (Random Match, Friends, AI)
     
+    private var incomingInvitesBanner: some View {
+        VStack(spacing: 12) {
+            ForEach(socialManager.incomingMatchInvites) { invite in
+                HStack(spacing: 12) {
+                    ZStack {
+                        Circle()
+                            .fill(Color.white.opacity(0.15))
+                            .frame(width: 48, height: 48)
+                        Text(invite.player1Avatar)
+                            .font(.title2)
+                    }
+                    
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("\(invite.player1Name) Seni Davet Ediyor!")
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundColor(.white)
+                        Text("Mod: \(invite.mode.replacingOccurrences(of: "friend_", with: "Mod "))")
+                            .font(.system(size: 12))
+                            .foregroundColor(.white.opacity(0.7))
+                    }
+                    
+                    Spacer()
+                    
+                    HStack(spacing: 8) {
+                        Button(action: {
+                            Task {
+                                await matchManager.declineDirectInvite(matchId: invite.id)
+                                socialManager.incomingMatchInvites.removeAll(where: { $0.id == invite.id })
+                            }
+                        }) {
+                            Image(systemName: "xmark")
+                                .font(.system(size: 14, weight: .bold))
+                                .foregroundColor(.white)
+                                .frame(width: 36, height: 36)
+                                .background(Circle().fill(Color.red.opacity(0.8)))
+                        }
+                        
+                        Button(action: {
+                            Task {
+                                await matchManager.acceptDirectInvite(match: invite)
+                                socialManager.incomingMatchInvites.removeAll(where: { $0.id == invite.id })
+                            }
+                        }) {
+                            Image(systemName: "checkmark")
+                                .font(.system(size: 14, weight: .bold))
+                                .foregroundColor(.white)
+                                .frame(width: 36, height: 36)
+                                .background(Circle().fill(Color.green.opacity(0.8)))
+                        }
+                    }
+                }
+                .padding(14)
+                .background(
+                    RoundedRectangle(cornerRadius: 20)
+                        .fill(Theme.accent.opacity(0.4))
+                        .overlay(RoundedRectangle(cornerRadius: 20).stroke(Theme.accent.opacity(0.6), lineWidth: 1.5))
+                )
+                .shadow(color: Theme.accent.opacity(0.3), radius: 10)
+                .padding(.horizontal, 20)
+            }
+        }
+    }
+    
     private var arenaSectionContent: some View {
         VStack(spacing: 20) {
-            // Minigame Selector - Vertical Cards
-            VStack(alignment: .leading, spacing: 12) {
-                Text("🎮 OYUN MODU")
+            
+            if !socialManager.incomingMatchInvites.isEmpty {
+                incomingInvitesBanner
+                    .padding(.top, 10)
+            }
+            
+            // Minigame Rooms - Vertical Large Buttons
+            VStack(alignment: .leading, spacing: 14) {
+                Text("🎮 OYUN ODALARI")
                     .font(.caption.bold())
                     .foregroundColor(Theme.accent)
                     .padding(.horizontal, 20)
                 
-                VStack(spacing: 10) {
-                    gameModeCard(
-                        id: 0,
-                        icon: "rectangle.split.2x2.fill",
-                        title: "Eşleştirme",
-                        description: "Kelime ve anlamını hızlıca eşleştir. Klasik mod!",
-                        color: .blue
-                    )
-                    gameModeCard(
-                        id: 1,
-                        icon: "keyboard.fill",
-                        title: "Yazma Yarışı",
-                        description: "Türkçe kelimeyi gör, İngilizcesini hızla yaz.",
-                        color: .green
-                    )
-                    gameModeCard(
-                        id: 2,
-                        icon: "timer",
-                        title: "Hızlı Seçim",
-                        description: "4 şıktan doğru anlamı seç. Yanlışta -2 saniye!",
-                        color: .orange
-                    )
-                    gameModeCard(
-                        id: 3,
-                        icon: "checkmark.circle.fill",
-                        title: "Doğru / Yanlış",
-                        description: "Gösterilen eşleşme doğru mu? Anında karar ver!",
-                        color: .purple
-                    )
-                    gameModeCard(
-                        id: 4,
-                        icon: "textformat.abc",
-                        title: "Harf Avı",
-                        description: "Karışık harfleri sıraya diz, kelimeyi oluştur.",
-                        color: .pink
-                    )
+                VStack(spacing: 12) {
+                    ForEach(gameModes, id: \.0) { mode in
+                        Button(action: {
+                            selectedMinigame = mode.0
+                            showModeRoom = true
+                        }) {
+                            HStack(spacing: 16) {
+                                ZStack {
+                                    RoundedRectangle(cornerRadius: 16)
+                                        .fill(mode.4.opacity(0.2))
+                                        .frame(width: 56, height: 56)
+                                    Image(systemName: mode.2)
+                                        .font(.system(size: 24, weight: .semibold))
+                                        .foregroundColor(mode.4)
+                                }
+                                
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(mode.1)
+                                        .font(.system(size: 17, weight: .bold))
+                                        .foregroundColor(.white)
+                                    Text(mode.3)
+                                        .font(.system(size: 13))
+                                        .foregroundColor(.white.opacity(0.6))
+                                        .lineLimit(2)
+                                        .fixedSize(horizontal: false, vertical: true)
+                                }
+                                
+                                Spacer(minLength: 0)
+                                
+                                Image(systemName: "chevron.right")
+                                    .font(.system(size: 14, weight: .bold))
+                                    .foregroundColor(.white.opacity(0.3))
+                            }
+                            .padding(16)
+                            .background(
+                                RoundedRectangle(cornerRadius: 20)
+                                    .fill(Color.white.opacity(0.04))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 20)
+                                            .stroke(mode.4.opacity(0.3), lineWidth: 1)
+                                    )
+                            )
+                        }
+                        .buttonStyle(.plain)
+                    }
                 }
                 .padding(.horizontal, 20)
             }
-            .padding(.top, 10)
-            
-            // HERO: Random 1v1 Matchmaking Card
-            randomMatchHeroCard
-
-            
-            // Friends Quick Challenge Bar
-            friendsQuickChallengeSection
+            .padding(.top, socialManager.incomingMatchInvites.isEmpty ? 10 : 0)
             
             // AI Robot Arena Grid
             aiRobotArenaSection
         }
     }
     
-    private func gameModeCard(id: Int, icon: String, title: String, description: String, color: Color) -> some View {
-        let isSelected = selectedMinigame == id
-        return Button(action: {
-            withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) { selectedMinigame = id }
-        }) {
-            HStack(spacing: 14) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 14)
-                        .fill(isSelected ? color : color.opacity(0.15))
-                        .frame(width: 48, height: 48)
-                    Image(systemName: icon)
-                        .font(.system(size: 20, weight: .semibold))
-                        .foregroundColor(isSelected ? .white : color)
-                }
-                
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(title)
-                        .font(.system(size: 15, weight: .bold))
-                        .foregroundColor(.white)
-                    Text(description)
-                        .font(.system(size: 12))
-                        .foregroundColor(.white.opacity(0.55))
-                        .lineLimit(2)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                
-                Spacer(minLength: 0)
-                
-                if isSelected {
-                    Image(systemName: "checkmark.circle.fill")
-                        .font(.system(size: 22))
-                        .foregroundColor(color)
-                }
-            }
-            .padding(12)
-            .background(
-                RoundedRectangle(cornerRadius: 16)
-                    .fill(isSelected ? color.opacity(0.12) : Color.white.opacity(0.04))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 16)
-                            .stroke(isSelected ? color.opacity(0.5) : Color.white.opacity(0.06), lineWidth: isSelected ? 1.5 : 1)
-                    )
-            )
-        }
-        .buttonStyle(.plain)
-    }
-    
-    private var randomMatchHeroCard: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack(spacing: 6) {
-                        Text("⚡️ RASTGELE 1V1 MAÇ")
-                            .font(.caption.bold())
-                            .foregroundColor(Theme.accent)
-                        
-                        Text("CANLI")
-                            .font(.system(size: 9, weight: .black))
-                            .foregroundColor(.white)
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
-                            .background(Capsule().fill(Color.red))
-                    }
-                    
-                    Text("Gerçek Bir Rakiple Yarış!")
-                        .font(.system(size: 22, weight: .bold, design: .rounded))
-                        .foregroundColor(.white)
-                }
-                Spacer()
-                
-                ZStack {
-                    Circle()
-                        .fill(Theme.accent.opacity(0.15))
-                        .frame(width: 52, height: 52)
-                    
-                    Image(systemName: "bolt.shield.fill")
-                        .font(.title2)
-                        .foregroundColor(Theme.accent)
-                }
-            }
-            
-            Text("Aynı seviyedeki diğer kullanıcılarla hızlı kelime eşleştirme yarışı yap. Hızlı ol, maçı kazan ve +50 XP topla!")
-                .font(.caption)
-                .foregroundColor(.white.opacity(0.65))
-                .lineSpacing(2)
-            
-            VStack(spacing: 10) {
-                Button(action: {
-                    Task {
-                        await matchManager.startRandomMatchmaking(gameMode: selectedMinigame)
-                    }
-                }) {
-                    HStack(spacing: 8) {
-                        Image(systemName: "bolt.fill")
-                            .font(.headline)
-                        Text("Rastgele Canlı Maç Bul")
-                            .font(.headline.bold())
-                    }
-                    .foregroundColor(.black)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 14)
-                    .background(
-                        LinearGradient(
-                            colors: [Theme.accent, Color(red: 0.35, green: 0.85, blue: 0.70)],
-                            startPoint: .leading,
-                            endPoint: .trailing
-                        )
-                    )
-                    .cornerRadius(14)
-                    .shadow(color: Theme.accent.opacity(0.3), radius: 10, x: 0, y: 4)
-                }
-                
-                HStack(spacing: 10) {
-                    Button(action: {
-                        Task {
-                            await matchManager.createPrivateRoom(gameMode: selectedMinigame)
-                        }
-                    }) {
-                        HStack(spacing: 4) {
-                            Image(systemName: "plus.circle.fill")
-                            Text("Özel Oda Kur")
-                        }
-                        .font(.caption.bold())
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 10)
-                        .background(RoundedRectangle(cornerRadius: 10).fill(Color.white.opacity(0.08)))
-                    }
-                    
-                    Button(action: {
-                        showJoinRoomSheet = true
-                    }) {
-                        HStack(spacing: 4) {
-                            Image(systemName: "number.square.fill")
-                            Text("Koda Katıl")
-                        }
-                        .font(.caption.bold())
-                        .foregroundColor(Theme.accent)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 10)
-                        .background(RoundedRectangle(cornerRadius: 10).fill(Theme.accent.opacity(0.12)))
-                    }
-                }
-            }
-        }
-        .padding(20)
-        .background(
-            RoundedRectangle(cornerRadius: 22)
-                .fill(
-                    LinearGradient(
-                        colors: [Color.white.opacity(0.08), Color.white.opacity(0.03)],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 22)
-                        .stroke(Theme.accent.opacity(0.35), lineWidth: 1.2)
-                )
-        )
-        .padding(.horizontal, 20)
-    }
-    
-    private var friendsQuickChallengeSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Text("👥 ARKADAŞLA DÜELLO")
-                    .font(.caption.bold())
-                    .foregroundColor(Theme.accent)
-                Spacer()
-                if !socialManager.friends.isEmpty {
-                    Text("\(socialManager.friends.count) Arkadaş")
-                        .font(.caption2)
-                        .foregroundColor(.white.opacity(0.5))
-                }
-            }
-            .padding(.horizontal, 20)
-            
-            if socialManager.friends.isEmpty {
-                HStack {
-                    Text("Henüz arkadaş eklemedin. 'Arkadaşlar' sekmesinden ekle!")
-                        .font(.caption)
-                        .foregroundColor(.white.opacity(0.5))
-                    Spacer()
-                }
-                .padding(16)
-                .background(RoundedRectangle(cornerRadius: 16).fill(Color.white.opacity(0.04)))
-                .padding(.horizontal, 20)
-            } else {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 12) {
-                        ForEach(socialManager.friends) { friend in
-                            Button(action: {
-                                selectedFriendOpponent = friend
-                                showFriendDuelActionDialog = true
-                            }) {
-                                VStack(spacing: 8) {
-                                    ZStack {
-                                        Circle()
-                                            .fill(Color.white.opacity(0.08))
-                                            .frame(width: 52, height: 52)
-                                        Text(friend.avatarEmoji)
-                                            .font(.title2)
-                                    }
-                                    
-                                    VStack(spacing: 2) {
-                                        Text(friend.displayName)
-                                            .font(.system(size: 13, weight: .semibold))
-                                            .foregroundColor(.white)
-                                            .lineLimit(1)
-                                        Text("\(friend.xp) XP")
-                                            .font(.system(size: 10))
-                                            .foregroundColor(Theme.accent)
-                                    }
-                                    
-                                    Text("Düello ⚔️")
-                                        .font(.system(size: 10, weight: .bold))
-                                        .foregroundColor(.black)
-                                        .padding(.horizontal, 10)
-                                        .padding(.vertical, 4)
-                                        .background(Capsule().fill(Color.orange))
-                                }
-                                .padding(12)
-                                .frame(width: 110)
-                                .background(RoundedRectangle(cornerRadius: 16).fill(Color.white.opacity(0.05)))
-                            }
-                        }
-                    }
-                    .padding(.horizontal, 20)
-                }
-            }
-        }
-    }
+
     
     private var aiRobotArenaSection: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -589,9 +453,26 @@ struct DuelsView: View {
                     .font(.caption.bold())
                     .foregroundColor(Theme.accent)
                 Spacer()
-                Text("Seviye \(robotDuelLevelStorage)/30")
+                Text("Seviye \(currentRobotLevelStorage)/30")
                     .font(.caption.bold())
                     .foregroundColor(.orange)
+            }
+            
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(CEFRLevel.allCases, id: \.self) { level in
+                        Button(action: {
+                            selectedAITargetLevel = level
+                        }) {
+                            Text(level.rawValue)
+                                .font(.system(size: 14, weight: .bold))
+                                .foregroundColor(selectedAITargetLevel == level ? .white : .white.opacity(0.6))
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 8)
+                                .background(Capsule().fill(selectedAITargetLevel == level ? Theme.accent : Color.white.opacity(0.1)))
+                        }
+                    }
+                }
             }
             
             Text("Robotları yenerek seviyeleri aç. Seviye yükseldikçe robot hızlanır ve kelime sayısı artar!")
@@ -600,8 +481,8 @@ struct DuelsView: View {
             
             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 10), count: 5), spacing: 12) {
                 ForEach(1...30, id: \.self) { levelNum in
-                    let isUnlocked = levelNum <= robotDuelLevelStorage
-                    let isCurrent = levelNum == robotDuelLevelStorage
+                    let isUnlocked = levelNum <= currentRobotLevelStorage
+                    let isCurrent = levelNum == currentRobotLevelStorage
                     
                     Button(action: {
                         guard isUnlocked else { return }
@@ -749,69 +630,96 @@ struct DuelsView: View {
     
     private func leaderboardRow(rank: Int, player: PublicProfile) -> some View {
         let isMe = player.id == socialManager.myProfile?.id
+        let isFriend = socialManager.friends.contains(where: { $0.id == player.id })
         
-        return Button(action: {
-            selectedProfileForViewing = player
-        }) {
-            HStack(spacing: 12) {
-                // Rank Number
-                Text("\(rank)")
-                    .font(.system(size: 14, weight: .bold, design: .rounded))
-                    .foregroundColor(rank <= 3 ? .yellow : .white.opacity(0.4))
-                    .frame(width: 24, alignment: .leading)
-                
-                // Avatar
-                ZStack {
-                    Circle()
-                        .fill(isMe ? Theme.accent.opacity(0.2) : Color.white.opacity(0.06))
-                        .frame(width: 40, height: 40)
-                    Text(player.avatarEmoji)
-                        .font(.title3)
-                }
-                
-                // Name & Level
-                VStack(alignment: .leading, spacing: 2) {
-                    HStack(spacing: 6) {
-                        Text(player.displayName)
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundColor(isMe ? Theme.accent : .white)
-                        
-                        if isMe {
-                            Text("(Sen)")
-                                .font(.system(size: 10, weight: .bold))
-                                .foregroundColor(Theme.accent)
-                        }
+        return HStack(spacing: 12) {
+            Button(action: {
+                selectedProfileForViewing = player
+            }) {
+                HStack(spacing: 12) {
+                    // Rank Number
+                    Text("\(rank)")
+                        .font(.system(size: 14, weight: .bold, design: .rounded))
+                        .foregroundColor(rank <= 3 ? .yellow : .white.opacity(0.4))
+                        .frame(width: 24, alignment: .leading)
+                    
+                    // Avatar
+                    ZStack {
+                        Circle()
+                            .fill(isMe ? Theme.accent.opacity(0.2) : Color.white.opacity(0.06))
+                            .frame(width: 40, height: 40)
+                        Text(player.avatarEmoji)
+                            .font(.title3)
                     }
                     
-                    Text("@\(player.username) • \(player.currentLevel)")
-                        .font(.caption2)
-                        .foregroundColor(.white.opacity(0.45))
+                    // Name & Level
+                    VStack(alignment: .leading, spacing: 2) {
+                        HStack(spacing: 6) {
+                            Text(player.displayName)
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundColor(isMe ? Theme.accent : .white)
+                                .lineLimit(1)
+                            
+                            if isMe {
+                                Text("(Sen)")
+                                    .font(.system(size: 10, weight: .bold))
+                                    .foregroundColor(Theme.accent)
+                            }
+                        }
+                        
+                        Text("@\(player.username) • \(player.currentLevel)")
+                            .font(.caption2)
+                            .foregroundColor(.white.opacity(0.45))
+                    }
+                    
+                    Spacer(minLength: 4)
                 }
-                
-                Spacer()
-                
-                // Stats (XP & Duels Won)
+            }
+            .buttonStyle(.plain)
+            
+            // Stats & Add Friend Action
+            HStack(spacing: 12) {
                 VStack(alignment: .trailing, spacing: 2) {
                     Text("\(player.xp) XP")
                         .font(.system(size: 14, weight: .bold, design: .rounded))
                         .foregroundColor(.white)
                     
-                    Text("\(player.matchesWon) Galibiyet")
+                    Text("\(player.matchesWon) Win")
                         .font(.system(size: 10))
                         .foregroundColor(.white.opacity(0.45))
                 }
+                
+                if !isMe && !isFriend {
+                    if socialManager.sentRequestReceiverIds.contains(player.id) {
+                        Image(systemName: "clock.fill")
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundColor(.white)
+                            .frame(width: 34, height: 34)
+                            .background(Circle().fill(Color.orange))
+                    } else {
+                        Button(action: {
+                            sendRequest(to: player.id)
+                        }) {
+                            Image(systemName: "person.badge.plus")
+                                .font(.system(size: 14, weight: .bold))
+                                .foregroundColor(.white)
+                                .frame(width: 34, height: 34)
+                                .background(Circle().fill(Theme.accent.opacity(0.8)))
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
             }
-            .padding(12)
-            .background(
-                RoundedRectangle(cornerRadius: 14)
-                    .fill(isMe ? Theme.accent.opacity(0.12) : Color.white.opacity(0.04))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 14)
-                            .stroke(isMe ? Theme.accent.opacity(0.4) : Color.clear, lineWidth: 1)
-                    )
-            )
         }
-        .buttonStyle(.plain)
+        .padding(12)
+        .background(
+            RoundedRectangle(cornerRadius: 14)
+                .fill(isMe ? Theme.accent.opacity(0.12) : Color.white.opacity(0.04))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14)
+                        .stroke(isMe ? Theme.accent.opacity(0.4) : Color.clear, lineWidth: 1)
+                )
+        )
     }
     
     // MARK: - 4. Friends & Requests Section
@@ -869,26 +777,28 @@ struct DuelsView: View {
                                 .foregroundColor(.white.opacity(0.6))
                         }
                         Spacer()
-                        
-                        Button(action: {
-                            sendRequest(to: found.id)
-                        }) {
-                            Text("İstek Gönder")
+                        if socialManager.sentRequestReceiverIds.contains(found.id) {
+                            Text("İstek Gönderildi")
                                 .font(.caption.bold())
-                                .foregroundColor(.black)
+                                .foregroundColor(.white)
                                 .padding(.horizontal, 14)
                                 .padding(.vertical, 8)
-                                .background(Capsule().fill(Theme.accent))
+                                .background(Capsule().fill(Color.orange))
+                        } else {
+                            Button(action: {
+                                sendRequest(to: found.id)
+                            }) {
+                                Text("İstek Gönder")
+                                    .font(.caption.bold())
+                                    .foregroundColor(.black)
+                                    .padding(.horizontal, 14)
+                                    .padding(.vertical, 8)
+                                    .background(Capsule().fill(Theme.accent))
+                            }
                         }
                     }
                     .padding(12)
                     .background(RoundedRectangle(cornerRadius: 12).fill(Color.white.opacity(0.06)))
-                }
-                
-                if showRequestSentSuccess {
-                    Text("Arkadaşlık isteği iletildi! 🚀")
-                        .font(.caption)
-                        .foregroundColor(.green)
                 }
             }
             .padding(18)
@@ -1233,10 +1143,21 @@ struct DuelsView: View {
                             .font(.caption.bold())
                             .foregroundColor(.white.opacity(0.5))
                             .padding(.top, 10)
+                    } else if socialManager.sentRequestReceiverIds.contains(profile.id) {
+                        HStack(spacing: 8) {
+                            Image(systemName: "clock.fill")
+                            Text("İstek Gönderildi")
+                        }
+                        .font(.headline.bold())
+                        .foregroundColor(.black)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                        .background(Color.orange)
+                        .cornerRadius(14)
+                        .padding(.top, 10)
                     } else {
                         Button(action: {
                             sendRequest(to: profile.id)
-                            selectedProfileForViewing = nil
                         }) {
                             HStack(spacing: 8) {
                                 Image(systemName: "person.badge.plus")
@@ -1286,12 +1207,204 @@ struct DuelsView: View {
         Task {
             try? await socialManager.sendFriendRequest(receiverId: id)
             withAnimation {
-                showRequestSentSuccess = true
                 searchedProfile = nil
                 searchUsername = ""
             }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-                showRequestSentSuccess = false
+        }
+    }
+}
+import SwiftUI
+
+struct ModeRoomView: View {
+    let modeId: Int
+    let modeTitle: String
+    let modeDescription: String
+    let modeIcon: String
+    let modeColor: Color
+    
+    @Environment(\.dismiss) var dismiss
+    @ObservedObject var matchManager = MatchManager.shared
+    @ObservedObject var socialManager = SocialManager.shared
+    
+    @State private var showInvitingRadar = false
+    @State private var invitedFriendName = ""
+    
+    var body: some View {
+        ZStack {
+            Theme.background.ignoresSafeArea()
+            
+            VStack(spacing: 0) {
+                // Header
+                HStack {
+                    Button(action: { dismiss() }) {
+                        Image(systemName: "chevron.left")
+                            .font(.system(size: 20, weight: .bold))
+                            .foregroundColor(.white)
+                            .padding(12)
+                            .background(Circle().fill(Color.white.opacity(0.1)))
+                    }
+                    Spacer()
+                    Text(modeTitle)
+                        .font(.title3.bold())
+                        .foregroundColor(.white)
+                    Spacer()
+                    Circle()
+                        .fill(Color.clear)
+                        .frame(width: 44, height: 44)
+                }
+                .padding(.horizontal, 20)
+                .padding(.vertical, 12)
+                
+                ScrollView {
+                    VStack(spacing: 24) {
+                        // Hero Icon
+                        ZStack {
+                            Circle()
+                                .fill(modeColor.opacity(0.15))
+                                .frame(width: 120, height: 120)
+                            
+                            Image(systemName: modeIcon)
+                                .font(.system(size: 50))
+                                .foregroundColor(modeColor)
+                        }
+                        .padding(.top, 20)
+                        
+                        Text(modeDescription)
+                            .font(.subheadline)
+                            .foregroundColor(.white.opacity(0.7))
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 30)
+                        
+                        // Random Match Button
+                        Button(action: {
+                            Task {
+                                await matchManager.startRandomMatchmaking(gameMode: modeId)
+                            }
+                        }) {
+                            HStack(spacing: 8) {
+                                Image(systemName: "bolt.fill")
+                                    .font(.headline)
+                                Text("Rastgele Eşleşme Bul")
+                                    .font(.headline.bold())
+                            }
+                            .foregroundColor(.black)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 16)
+                            .background(
+                                LinearGradient(
+                                    colors: [modeColor, modeColor.opacity(0.8)],
+                                    startPoint: .leading,
+                                    endPoint: .trailing
+                                )
+                            )
+                            .cornerRadius(16)
+                            .shadow(color: modeColor.opacity(0.4), radius: 10, x: 0, y: 4)
+                        }
+                        .padding(.horizontal, 24)
+                        .padding(.top, 10)
+                        
+                        // Invite Friends Section
+                        VStack(alignment: .leading, spacing: 16) {
+                            Text("Arkadaşlarını Davet Et")
+                                .font(.headline.bold())
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 24)
+                            
+                            if socialManager.friends.isEmpty {
+                                Text("Henüz arkadaş eklemedin.")
+                                    .font(.caption)
+                                    .foregroundColor(.white.opacity(0.5))
+                                    .frame(maxWidth: .infinity, alignment: .center)
+                                    .padding(.vertical, 20)
+                            } else {
+                                VStack(spacing: 12) {
+                                    ForEach(socialManager.friends) { friend in
+                                        HStack(spacing: 12) {
+                                            ZStack {
+                                                Circle()
+                                                    .fill(Color.white.opacity(0.08))
+                                                    .frame(width: 44, height: 44)
+                                                Text(friend.avatarEmoji)
+                                                    .font(.title3)
+                                            }
+                                            
+                                            VStack(alignment: .leading, spacing: 2) {
+                                                Text(friend.displayName)
+                                                    .font(.system(size: 15, weight: .semibold))
+                                                    .foregroundColor(.white)
+                                                Text("\(friend.xp) XP")
+                                                    .font(.system(size: 12))
+                                                    .foregroundColor(modeColor)
+                                            }
+                                            
+                                            Spacer()
+                                            
+                                            Button(action: {
+                                                invitedFriendName = friend.displayName
+                                                withAnimation { showInvitingRadar = true }
+                                                Task {
+                                                    await matchManager.sendDirectInvite(to: friend, gameMode: modeId)
+                                                }
+                                            }) {
+                                                Text("Davet Et")
+                                                    .font(.system(size: 12, weight: .bold))
+                                                    .foregroundColor(.white)
+                                                    .padding(.horizontal, 16)
+                                                    .padding(.vertical, 8)
+                                                    .background(Capsule().fill(modeColor))
+                                            }
+                                        }
+                                        .padding(12)
+                                        .background(RoundedRectangle(cornerRadius: 16).fill(Color.white.opacity(0.05)))
+                                    }
+                                }
+                                .padding(.horizontal, 24)
+                            }
+                        }
+                        .padding(.top, 10)
+                        
+                        Spacer(minLength: 40)
+                    }
+                }
+            }
+            
+            // Inviting Radar Overlay
+            if showInvitingRadar || matchManager.isSearching {
+                ZStack {
+                    Color.black.opacity(0.7).ignoresSafeArea()
+                    
+                    VStack(spacing: 24) {
+                        ZStack {
+                            Circle().stroke(modeColor.opacity(0.3), lineWidth: 2).frame(width: 140, height: 140)
+                            Circle().fill(modeColor.opacity(0.2)).frame(width: 80, height: 80)
+                            Image(systemName: "paperplane.fill").font(.system(size: 32)).foregroundColor(modeColor)
+                        }
+                        
+                        Text(matchManager.searchStatus.isEmpty ? "\(invitedFriendName) bekleniyor..." : matchManager.searchStatus)
+                            .font(.headline)
+                            .foregroundColor(.white)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 20)
+                        
+                        Button("İptal Et") {
+                            withAnimation { showInvitingRadar = false }
+                            matchManager.cancelSearch()
+                        }
+                        .font(.subheadline.bold())
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 24)
+                        .padding(.vertical, 10)
+                        .background(Capsule().fill(Color.white.opacity(0.2)))
+                        .padding(.top, 20)
+                    }
+                }
+                .transition(.opacity)
+                .zIndex(100)
+            }
+        }
+        .onChange(of: matchManager.showBattleArena) { show in
+            if show {
+                dismiss()
             }
         }
     }
