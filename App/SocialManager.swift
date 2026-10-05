@@ -1,6 +1,7 @@
 import Foundation
 import SwiftUI
 import Supabase
+import UserNotifications
 
 @MainActor
 public class SocialManager: ObservableObject {
@@ -10,6 +11,12 @@ public class SocialManager: ObservableObject {
     @Published public var friends: [PublicProfile] = []
     @Published public var pendingRequests: [FriendRequest] = []
     @Published public var friendsLeaderboard: [PublicProfile] = []
+    
+    // Notifications
+    @Published public var showInAppNotification: Bool = false
+    @Published public var inAppNotificationMessage: String = ""
+    
+    private var pollingTask: Task<Void, Never>? = nil
     @Published public var globalLeaderboard: [PublicProfile] = []
     @Published public var errorMessage: String? = nil
     @Published public var isLoading: Bool = false
@@ -35,6 +42,41 @@ public class SocialManager: ObservableObject {
     private init() {
         if let local = loadLocalProfile() {
             self.myProfile = local
+        }
+        requestNotificationPermission()
+    }
+    
+    private func requestNotificationPermission() {
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound]) { granted, error in
+            if let error = error {
+                print("Notification permission error: \(error)")
+            }
+        }
+    }
+    
+    public func triggerLocalNotification(title: String, body: String) {
+        // In-app Toast
+        DispatchQueue.main.async {
+            self.inAppNotificationMessage = body
+            withAnimation(.spring()) {
+                self.showInAppNotification = true
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 4) {
+                withAnimation { self.showInAppNotification = false }
+            }
+        }
+        
+        // System Push Notification (works in background or foreground depending on delegate)
+        let content = UNMutableNotificationContent()
+        content.title = title
+        content.body = body
+        content.sound = .default
+        
+        let request = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil)
+        UNUserNotificationCenter.current().add(request) { error in
+            if let error = error {
+                print("Failed to schedule local notification: \(error)")
+            }
         }
     }
     
@@ -98,8 +140,11 @@ public class SocialManager: ObservableObject {
             
             // 2. Fetch real friends and requests
             await fetchRealFriends()
-            await fetchRealRequests()
+            await fetchRealRequests(isInitial: true)
             await fetchLeaderboards()
+            
+            // Start Polling
+            startPolling()
         } catch {
             print("Supabase profile load error: \(error.localizedDescription)")
             self.errorMessage = error.localizedDescription
@@ -232,7 +277,7 @@ public class SocialManager: ObservableObject {
                 .eq("id", value: requestId)
                 .execute()
             
-            await fetchRealRequests()
+            await fetchRealRequests(isInitial: true)
             await fetchRealFriends()
             await fetchLeaderboards()
         } catch {
@@ -248,7 +293,7 @@ public class SocialManager: ObservableObject {
                 .eq("id", value: requestId)
                 .execute()
             
-            await fetchRealRequests()
+            await fetchRealRequests(isInitial: true)
         } catch {
             print("Reject request error: \(error)")
         }
@@ -297,7 +342,7 @@ public class SocialManager: ObservableObject {
         }
     }
     
-    private func fetchRealRequests() async {
+    private func fetchRealRequests(isInitial: Bool = false) async {
         guard let profile = myProfile else { return }
         do {
             let received: [FriendshipWithSender] = try await client
@@ -308,6 +353,7 @@ public class SocialManager: ObservableObject {
                 .execute()
                 .value
             
+            let previousCount = self.pendingRequests.count
             self.pendingRequests = received.map { wrapper in
                 FriendRequest(
                     id: wrapper.id,
@@ -317,56 +363,31 @@ public class SocialManager: ObservableObject {
                     avatarEmoji: wrapper.profiles.avatar_emoji
                 )
             }
+            
+            // If new requests arrived
+            if !isInitial && self.pendingRequests.count > previousCount {
+                if let newest = self.pendingRequests.last {
+                    triggerLocalNotification(
+                        title: "Yeni Arkadaşlık İsteği!",
+                        body: "\(newest.senderName) sana arkadaşlık isteği gönderdi."
+                    )
+                }
+            }
+            
         } catch {
             print("Fetch real requests error: \(error)")
             self.pendingRequests = []
         }
     }
     
-    // MARK: - Polling for New Friend Requests
-    
-    private var isPolling = false
-    private var previousRequestIds: Set<String> = []
-    
-    public func startPollingRequests() async {
-        guard !isPolling else { return }
-        isPolling = true
-        
-        // Initialize with current requests
-        previousRequestIds = Set(pendingRequests.map { $0.id })
-        
-        while isPolling {
-            try? await Task.sleep(nanoseconds: 15_000_000_000) // 15 seconds
-            guard myProfile != nil else { continue }
-            
-            await fetchRealRequests()
-            
-            let currentIds = Set(pendingRequests.map { $0.id })
-            let newIds = currentIds.subtracting(previousRequestIds)
-            
-            if !newIds.isEmpty {
-                for req in pendingRequests where newIds.contains(req.id) {
-                    // In-app banner
-                    NotificationManager.shared.showBanner(
-                        title: "Arkadaşlık İsteği",
-                        message: "\(req.senderName) (@\(req.senderUsername)) sana arkadaşlık isteği gönderdi!",
-                        emoji: "👋"
-                    )
-                    
-                    // Push notification (for background)
-                    NotificationManager.shared.sendLocalNotification(
-                        title: "Yeni Arkadaşlık İsteği 👋",
-                        body: "\(req.senderName) sana arkadaşlık isteği gönderdi!"
-                    )
-                }
+    private func startPolling() {
+        pollingTask?.cancel()
+        pollingTask = Task {
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 10_000_000_000) // Poll every 10 seconds
+                await fetchRealRequests(isInitial: false)
             }
-            
-            previousRequestIds = currentIds
         }
-    }
-    
-    public func stopPolling() {
-        isPolling = false
     }
 }
 

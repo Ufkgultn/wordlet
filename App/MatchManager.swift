@@ -374,17 +374,19 @@ public class MatchManager: ObservableObject {
                         .value
                     
                     if let current = updated.first, current.status == "in_progress", let oppName = current.player2Name {
-                        self.currentOpponent = PublicProfile(
-                            id: current.player2Id ?? "opponent",
-                            username: "rakip",
-                            displayName: oppName,
-                            currentLevel: current.level,
-                            xp: 0,
-                            avatarEmoji: current.player2Avatar ?? "⚡️"
-                        )
-                        self.activeMatch = current
-                        self.isSearching = false
-                        self.showBattleArena = true
+                        await MainActor.run {
+                            self.currentOpponent = PublicProfile(
+                                id: current.player2Id ?? "opponent",
+                                username: "rakip",
+                                displayName: oppName,
+                                currentLevel: current.level,
+                                xp: 0,
+                                avatarEmoji: current.player2Avatar ?? "⚡️"
+                            )
+                            self.activeMatch = current
+                            self.isSearching = false
+                            self.showBattleArena = true
+                        }
                         break
                     }
                 } catch {

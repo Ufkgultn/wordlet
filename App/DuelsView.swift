@@ -40,8 +40,8 @@ struct DuelsView: View {
     // Matchmaking pulse animation
     @State private var radarPulse = false
     
-    // Profile Detail
-    @State private var selectedProfileForDetail: PublicProfile? = nil
+    // Profile Viewing
+    @State private var selectedProfileForViewing: PublicProfile? = nil
     
     var body: some View {
         ZStack {
@@ -75,7 +75,7 @@ struct DuelsView: View {
                 }
                 .padding(.top, 10)
             }
-            .blur(radius: (matchManager.isSearching || showJoinRoomSheet) ? 5 : 0)
+            .blur(radius: (matchManager.isSearching || showJoinRoomSheet || selectedProfileForViewing != nil) ? 5 : 0)
             
             // Custom Pop-ups
             if matchManager.isSearching {
@@ -89,12 +89,41 @@ struct DuelsView: View {
                     .transition(.scale(scale: 0.9).combined(with: .opacity))
                     .zIndex(100)
             }
+            
+            if let profile = selectedProfileForViewing {
+                profileModal(profile: profile)
+                    .transition(.scale(scale: 0.9).combined(with: .opacity))
+                    .zIndex(100)
+            }
+            
+            // In-app Notification
+            if socialManager.showInAppNotification {
+                VStack {
+                    HStack(spacing: 12) {
+                        Image(systemName: "bell.fill")
+                            .foregroundColor(.white)
+                            .font(.system(size: 20))
+                        Text(socialManager.inAppNotificationMessage)
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(.white)
+                            .multilineTextAlignment(.leading)
+                        Spacer()
+                    }
+                    .padding(16)
+                    .background(RoundedRectangle(cornerRadius: 16).fill(Color.orange.opacity(0.9)))
+                    .shadow(radius: 10)
+                    .padding(.horizontal, 20)
+                    .padding(.top, 50)
+                    
+                    Spacer()
+                }
+                .transition(.move(edge: .top).combined(with: .opacity))
+                .zIndex(200)
+            }
         }
         .onAppear {
             Task {
                 await socialManager.loadProfileAndFriends()
-                await NotificationManager.shared.requestPermission()
-                await socialManager.startPollingRequests()
             }
         }
         // Popups and full screens
@@ -117,10 +146,6 @@ struct DuelsView: View {
         .sheet(isPresented: $showLoginSheet) {
             LoginView()
         }
-        // Profile Detail Sheet
-        .sheet(item: $selectedProfileForDetail) { profile in
-            ProfileDetailView(profile: profile)
-        }
         .confirmationDialog(
             "Arkadaşla Düello",
             isPresented: $showFriendDuelActionDialog,
@@ -128,7 +153,7 @@ struct DuelsView: View {
         ) { friend in
             Button("⚡️ Canlı Özel Oda Kur") {
                 Task {
-                    await matchManager.createPrivateRoom()
+                    await matchManager.createPrivateRoom(gameMode: selectedMinigame)
                 }
             }
             Button("🎯 Hızlı Alıştırma Düellosu") {
@@ -412,7 +437,7 @@ struct DuelsView: View {
             VStack(spacing: 10) {
                 Button(action: {
                     Task {
-                        await matchManager.startRandomMatchmaking()
+                        await matchManager.startRandomMatchmaking(gameMode: selectedMinigame)
                     }
                 }) {
                     HStack(spacing: 8) {
@@ -438,7 +463,7 @@ struct DuelsView: View {
                 HStack(spacing: 10) {
                     Button(action: {
                         Task {
-                            await matchManager.createPrivateRoom()
+                            await matchManager.createPrivateRoom(gameMode: selectedMinigame)
                         }
                     }) {
                         HStack(spacing: 4) {
@@ -640,12 +665,7 @@ struct DuelsView: View {
             // Ranked Table
             VStack(spacing: 8) {
                 ForEach(Array(list.enumerated()), id: \.element.id) { index, player in
-                    Button(action: {
-                        selectedProfileForDetail = player
-                    }) {
-                        leaderboardRow(rank: index + 1, player: player)
-                    }
-                    .buttonStyle(.plain)
+                    leaderboardRow(rank: index + 1, player: player)
                 }
             }
             .padding(.horizontal, 20)
@@ -676,10 +696,13 @@ struct DuelsView: View {
     private func podiumItem(player: PublicProfile, rank: Int, medal: String, color: Color, height: CGFloat) -> some View {
         let isMe = player.id == socialManager.myProfile?.id
         
-        return VStack(spacing: 8) {
-            // Crown / Medal Icon
-            Text(medal)
-                .font(.system(size: 24))
+        return Button(action: {
+            selectedProfileForViewing = player
+        }) {
+            VStack(spacing: 8) {
+                // Crown / Medal Icon
+                Text(medal)
+                    .font(.system(size: 24))
             
             // Avatar with glowing ring
             ZStack {
@@ -718,73 +741,77 @@ struct DuelsView: View {
                         .padding(.top, 10),
                     alignment: .top
                 )
+            }
         }
+        .buttonStyle(.plain)
         .frame(maxWidth: .infinity)
-        .onTapGesture {
-            selectedProfileForDetail = player
-        }
     }
     
     private func leaderboardRow(rank: Int, player: PublicProfile) -> some View {
         let isMe = player.id == socialManager.myProfile?.id
         
-        return HStack(spacing: 12) {
-            // Rank Number
-            Text("\(rank)")
-                .font(.system(size: 14, weight: .bold, design: .rounded))
-                .foregroundColor(rank <= 3 ? .yellow : .white.opacity(0.4))
-                .frame(width: 24, alignment: .leading)
-            
-            // Avatar
-            ZStack {
-                Circle()
-                    .fill(isMe ? Theme.accent.opacity(0.2) : Color.white.opacity(0.06))
-                    .frame(width: 40, height: 40)
-                Text(player.avatarEmoji)
-                    .font(.title3)
-            }
-            
-            // Name & Level
-            VStack(alignment: .leading, spacing: 2) {
-                HStack(spacing: 6) {
-                    Text(player.displayName)
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(isMe ? Theme.accent : .white)
-                    
-                    if isMe {
-                        Text("(Sen)")
-                            .font(.system(size: 10, weight: .bold))
-                            .foregroundColor(Theme.accent)
-                    }
+        return Button(action: {
+            selectedProfileForViewing = player
+        }) {
+            HStack(spacing: 12) {
+                // Rank Number
+                Text("\(rank)")
+                    .font(.system(size: 14, weight: .bold, design: .rounded))
+                    .foregroundColor(rank <= 3 ? .yellow : .white.opacity(0.4))
+                    .frame(width: 24, alignment: .leading)
+                
+                // Avatar
+                ZStack {
+                    Circle()
+                        .fill(isMe ? Theme.accent.opacity(0.2) : Color.white.opacity(0.06))
+                        .frame(width: 40, height: 40)
+                    Text(player.avatarEmoji)
+                        .font(.title3)
                 }
                 
-                Text("@\(player.username) • \(player.currentLevel)")
-                    .font(.caption2)
-                    .foregroundColor(.white.opacity(0.45))
-            }
-            
-            Spacer()
-            
-            // Stats (XP & Duels Won)
-            VStack(alignment: .trailing, spacing: 2) {
-                Text("\(player.xp) XP")
-                    .font(.system(size: 14, weight: .bold, design: .rounded))
-                    .foregroundColor(.white)
+                // Name & Level
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack(spacing: 6) {
+                        Text(player.displayName)
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(isMe ? Theme.accent : .white)
+                        
+                        if isMe {
+                            Text("(Sen)")
+                                .font(.system(size: 10, weight: .bold))
+                                .foregroundColor(Theme.accent)
+                        }
+                    }
+                    
+                    Text("@\(player.username) • \(player.currentLevel)")
+                        .font(.caption2)
+                        .foregroundColor(.white.opacity(0.45))
+                }
                 
-                Text("\(player.matchesWon) Galibiyet")
-                    .font(.system(size: 10))
-                    .foregroundColor(.white.opacity(0.45))
+                Spacer()
+                
+                // Stats (XP & Duels Won)
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text("\(player.xp) XP")
+                        .font(.system(size: 14, weight: .bold, design: .rounded))
+                        .foregroundColor(.white)
+                    
+                    Text("\(player.matchesWon) Galibiyet")
+                        .font(.system(size: 10))
+                        .foregroundColor(.white.opacity(0.45))
+                }
             }
+            .padding(12)
+            .background(
+                RoundedRectangle(cornerRadius: 14)
+                    .fill(isMe ? Theme.accent.opacity(0.12) : Color.white.opacity(0.04))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 14)
+                            .stroke(isMe ? Theme.accent.opacity(0.4) : Color.clear, lineWidth: 1)
+                    )
+            )
         }
-        .padding(12)
-        .background(
-            RoundedRectangle(cornerRadius: 14)
-                .fill(isMe ? Theme.accent.opacity(0.12) : Color.white.opacity(0.04))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 14)
-                        .stroke(isMe ? Theme.accent.opacity(0.4) : Color.clear, lineWidth: 1)
-                )
-        )
+        .buttonStyle(.plain)
     }
     
     // MARK: - 4. Friends & Requests Section
@@ -1142,6 +1169,98 @@ struct DuelsView: View {
                     .overlay(RoundedRectangle(cornerRadius: 30).stroke(Color.white.opacity(0.1), lineWidth: 1))
             )
             .padding(.horizontal, 30)
+        }
+    }
+    
+    // MARK: - Profile Modal
+    
+    private func profileModal(profile: PublicProfile) -> some View {
+        let isFriend = socialManager.friends.contains(where: { $0.id == profile.id })
+        let isMe = profile.id == socialManager.myProfile?.id
+        
+        return ZStack {
+            Color.black.opacity(0.6).ignoresSafeArea()
+                .onTapGesture { selectedProfileForViewing = nil }
+            
+            VStack(spacing: 24) {
+                // Header
+                ZStack(alignment: .topTrailing) {
+                    Button(action: { selectedProfileForViewing = nil }) {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 24))
+                            .foregroundColor(.white.opacity(0.5))
+                    }
+                    .padding(.top, -10)
+                    .padding(.trailing, -10)
+                    
+                    VStack(spacing: 12) {
+                        ZStack {
+                            Circle()
+                                .fill(Theme.accent.opacity(0.2))
+                                .frame(width: 80, height: 80)
+                                .overlay(Circle().stroke(Theme.accent, lineWidth: 2))
+                            Text(profile.avatarEmoji)
+                                .font(.system(size: 40))
+                        }
+                        
+                        VStack(spacing: 4) {
+                            Text(profile.displayName)
+                                .font(.title3.bold())
+                                .foregroundColor(.white)
+                            Text("@\(profile.username)")
+                                .font(.subheadline)
+                                .foregroundColor(.white.opacity(0.6))
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+                
+                // Stats Grid
+                HStack(spacing: 16) {
+                    statPill(title: "XP", value: "\(profile.xp)", icon: "star.fill", color: .yellow)
+                    statPill(title: "Seviye", value: "\(profile.currentLevel)", icon: "rosette", color: .orange)
+                }
+                
+                HStack(spacing: 16) {
+                    statPill(title: "Oynanan", value: "\(profile.matchesPlayed)", icon: "gamecontroller.fill", color: .blue)
+                    statPill(title: "Kazanılan", value: "\(profile.matchesWon)", icon: "trophy.fill", color: .green)
+                }
+                
+                // Add Friend Action
+                if !isMe {
+                    if isFriend {
+                        Text("Sizinle arkadaş")
+                            .font(.caption.bold())
+                            .foregroundColor(.white.opacity(0.5))
+                            .padding(.top, 10)
+                    } else {
+                        Button(action: {
+                            sendRequest(to: profile.id)
+                            selectedProfileForViewing = nil
+                        }) {
+                            HStack(spacing: 8) {
+                                Image(systemName: "person.badge.plus")
+                                Text("Arkadaş Ekle")
+                            }
+                            .font(.headline.bold())
+                            .foregroundColor(.black)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 14)
+                            .background(Theme.accent)
+                            .cornerRadius(14)
+                        }
+                        .padding(.top, 10)
+                    }
+                }
+            }
+            .padding(24)
+            .background(
+                RoundedRectangle(cornerRadius: 30)
+                    .fill(Theme.background)
+                    .shadow(color: Theme.accent.opacity(0.2), radius: 25)
+                    .overlay(RoundedRectangle(cornerRadius: 30).stroke(Color.white.opacity(0.1), lineWidth: 1))
+            )
+            .padding(.horizontal, 40)
         }
     }
     
