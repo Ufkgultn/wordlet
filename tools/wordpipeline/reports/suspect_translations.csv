@@ -1,0 +1,13 @@
+id,english,turkish,pos,reason
+69,Bread,Ekmek,noun,"TR fiil, EN fiil değil"
+889,To,"-mek, -mak",infinitive-to,"TR fiil, EN fiil değil"
+1604,Finger,Parmak,noun,"TR fiil, EN fiil değil"
+1616,Singing,Şarkı söylemek,noun,"TR fiil, EN fiil değil"
+1920,Have,Sahip Olmak,have-verb,"TR fiil, EN fiil değil"
+2034,Be,Olmak,be-verb,"TR fiil, EN fiil değil"
+2076,Smoking,Sigara İçmek,noun,"TR fiil, EN fiil değil"
+2781,Meal,Yemek,noun,"TR fiil, EN fiil değil"
+3069,Toast,Kızarmış ekmek,noun,"TR fiil, EN fiil değil"
+3236,Skateboarding,Kaykay yapmak,noun,"TR fiil, EN fiil değil"
+3237,Snowboarding,Snowboard yapmak,noun,"TR fiil, EN fiil değil"
+3285,Main course,Ana yemek,noun,"TR fiil, EN fiil değil"

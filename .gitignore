@@ -3,3 +3,18 @@
 DerivedData/
 *.xcuserstate
 xcuserdata/
+
+# Python / kelime pipeline
+.venv/
+__pycache__/
+tools/wordpipeline/.env
+tools/wordpipeline/cache/
+tools/wordpipeline/agent_work/
+tools/wordpipeline/reports/example_changes.csv
+tools/wordpipeline/reports/translation_changes.csv
+tools/wordpipeline/reports/added_words.csv
+tools/wordpipeline/reports/generation_failures*.csv
+tools/wordpipeline/reports/review_*_failures.csv
+
+# Supabase CLI geçici dosyaları
+supabase/.temp/

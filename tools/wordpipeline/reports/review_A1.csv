@@ -1,0 +1,202 @@
+id,english,pos,note,old_turkish,new_turkish,old_example,new_example,new_example_tr
+10,Sale,noun,Simplified for A1.,Satış,Satış,He celebrated after the sale of company.,He made a big sale today.,Bugün büyük bir satış yaptı.
+11,Star,noun,Used the singular form of the target word.,Yıldız,Yıldız,We sat outside on the grass and looked up at the stars.,Look at that bright star.,Şu parlak yıldıza bak.
+15,As,preposition,Changed to most common A1 meaning 'Olarak'.,Gibi,Olarak,"It's not as well made, but it's twice as expensive.",She works as a nurse.,Hemşire olarak çalışıyor.
+18,Night,noun,Sentence too long for A1.,Gece,Gece,The city looks beautiful with all the lights at night.,I sleep well at night.,Gece iyi uyurum.
+19,Day,noun,Sentence too long for A1.,Gün,Gün,It was a beautiful sunny day and the birds were singing.,It is a beautiful day.,Güzel bir gün.
+22,Not,adverb,Fixed Turkish meaning and simplified.,Olumsuz,Değil,"Did you take out the trash? No, I did not.",I am not a doctor.,Ben doktor değilim.
+25,Well,adjective,Changed meaning to 'İyi' for A1.,Kuyu,İyi,"I had been sick, but now I'm well.","I am very well, thank you.","Çok iyiyim, teşekkür ederim."
+28,Gift,noun,Sentence too long for A1.,Hediye,Hediye,She gave her mother a beautiful gift for Mother's Day.,This gift is for you.,Bu hediye senin için.
+31,Butter,noun,Example was a fragment.,Tereyağı,Tereyağı,peanut butter.,I like bread with butter.,Tereyağlı ekmeği severim.
+32,Card,noun,Used the singular form of the target word.,Kart,Kart,He played cards with his friends.,Pick a card.,Bir kart seç.
+36,Sad,adjective,Simplified sentence for A1.,Üzgün,Üzgün,She felt sad after reading the tragic ending of the book.,Why are you sad today?,Bugün neden üzgünsün?
+38,Language,noun,Simplified vocabulary for A1.,Dil,Dil,Learning a new language opens up many opportunities.,English is an easy language.,İngilizce kolay bir dildir.
+39,Of,preposition,Fixed meaning and example.,İle Ilgili,-nin,This is a perfect example of of.,This is a picture of my family.,Bu ailemin bir fotoğrafı.
+45,Choose,verb,Sentence too long for A1.,Seçmek,Seçmek,You can choose any book you want to read.,You can choose a book.,Bir kitap seçebilirsin.
+51,Soon,adverb,Sentence too long for A1.,Yakında,Yakında,"We will arrive at the hotel soon, don't worry.",I will see you soon.,Yakında görüşürüz.
+52,Never,adverb,Simplified vocabulary for A1.,Asla,Asla,You should never give up on your dreams.,I never eat meat.,Ben asla et yemem.
+64,Noise,noun,Sentence too long for A1.,Gürültü,Gürültü,There was a loud noise outside that woke me up.,I hear a strange noise.,Garip bir gürültü duyuyorum.
+65,Watch,noun,Sentence too long for A1.,Kol Saati,Kol Saati,He bought a new watch that tracks his steps.,My watch is very old.,Kol saatim çok eski.
+72,Island,noun,Sentence too long for A1.,Ada,Ada,They spent their vacation on a beautiful tropical island.,We live on an island.,Biz bir adada yaşıyoruz.
+82,Farm,noun,Example was a fragment.,Çiftlik,Çiftlik,antenna farm.,My uncle has a big farm.,Amcamın büyük bir çiftliği var.
+84,Internet,noun,Sentence too long for A1.,Internet,Internet,"The internet is slow today, so I cannot watch videos.",I use the Internet every day.,Her gün interneti kullanırım.
+88,Still,adjective,Used the most common adverb meaning 'Hâlâ'.,Hala,Hâlâ,the still of the night.,I am still at home.,Ben hâlâ evdeyim.
+90,Tall,adjective,Used the exact target word.,Uzun,Uzun,The giraffe is the tallest animal in the world.,He is a very tall man.,O çok uzun bir adam.
+91,Pet,noun,Sentence too long for A1.,Evcil Hayvan,Evcil Hayvan,Do you have a pet like a dog or a cat?,I want a pet.,Bir evcil hayvan istiyorum.
+110,Middle,adjective,Sentence too long and complex for A1.,Orta,Orta,The middle of a circle is the point which has the same distance to every point of circle.,Draw a line in the middle.,Ortaya bir çizgi çiz.
+111,Face,noun,Sentence too long for A1.,Yüz,Yüz,He washes his face with cold water every morning to wake up.,Wash your face.,Yüzünü yıka.
+150,Eye,noun,Tense mismatch in original translation; simplified example for A1 level.,Göz,Göz,Bright lights really hurt my eyes.,I have brown eyes.,Kahverengi gözlerim var.
+201,Boat,noun,Original example was a fragment. Changed 'turkish' to 'Tekne' which is more standard.,Bot,Tekne,a stone boat;  a gravy boat.,We have a small boat.,Küçük bir teknemiz var.
+233,May,modal auxiliary,"The most common meaning of May at A1 is the month, even if the POS tag was modal auxiliary.",-ebilmek,Mayıs,It may rain this afternoon.,My birthday is in May.,Doğum günüm mayıstadır.
+244,Grandparent,noun,"Simplified example to sound more natural, and fixed Turkish capitalization.",Büyükbaba Veya Büyükanne,Büyükanne veya büyükbaba,Each grandparent gives me a gift.,I visit my grandparent on Sundays.,Pazar günleri büyükannemi veya büyükbabamı ziyaret ederim.
+260,Dish,noun,Example was a sentence fragment. Rewrote as a complete sentence.,Tabak,Tabak,a dish of stew.,The dish is empty.,Tabak boş.
+301,Sleep,verb,Example contained 'should' which is not A1. Rewrote using present simple.,Uyumak,Uyumak,You should sleep 8 hours a day.,I sleep early every night.,Her gece erken uyurum.
+314,Toy,noun,Example exceeded A1 limit of 8 words. Rewrote to be shorter and simpler.,Oyuncak,Oyuncak,A grown man does not play with a child’s toy.,My cat plays with a toy.,Kedim bir oyuncakla oynar.
+347,Small,adjective,Example was a sentence fragment. Rewrote as a complete sentence.,Küçük,Küçük,A small group.,My room is very small.,Odam çok küçük.
+348,Homework,noun,Example was too long and complex for A1. Rewrote using simple present tense.,Ev Ödevi,Ev Ödevi,You must do your homework before you can watch television.,I do my homework every day.,Her gün ev ödevimi yaparım.
+385,Spending,verb,Sentence used 'pass time' meaning instead of 'spend money'. Rewrote.,Harcamak,Harcamak,We are spending the day at the beach.,He is spending a lot of money.,O çok para harcıyor.
+401,Cloth,noun,Used an idiom (man of the cloth). Rewrote.,Kumaş,Kumaş,He is a respected man of the cloth.,This cloth is very soft.,Bu kumaş çok yumuşak.
+404,Heart,noun,Used metaphorical sense of heart (courage). Rewrote to literal meaning.,Kalp,Kalp,"The team lost, but they showed a lot of heart.",My heart is beating fast.,Kalbim hızlı atıyor.
+413,Hole,noun,Contained two sentences. Reduced to one.,Delik,Delik,There’s a hole in my shoe.  Her stocking has a hole in it.,There is a hole in my shoe.,Ayakkabımda bir delik var.
+463,Something,pronoun,Fixed the Turkish translation to be more natural.,Bir Şey,Bir Şey,I have something for you.,I have something for you.,Senin için bir şeyim var.
+470,Word,noun,Example was an idiom. Rewrote.,Kelime,Kelime,mum's the word.,I do not know this word.,Bu kelimeyi bilmiyorum.
+507,Sea,noun,Example was a fragment. Rewrote.,Deniz,Deniz,"The Caspian Sea, the Sea of Galilee, the Salton Sea, etc.",We swim in the sea in summer.,Yazın denizde yüzeriz.
+510,Draw,verb,Example used noun sense of draw. Rewrote to verb sense.,Çizmek,Çizmek,The game ended in a draw.,I can draw a picture.,Bir resim çizebilirim.
+513,Say,verb,Previous example translates to 'yazmak' in Turkish. Rewrote to use 'söylemek'.,Söylemek,Söylemek,What does the sign say?,Please say your name.,Lütfen adını söyle.
+558,Swimming,noun,"Example was a fragment and used an advanced, figurative meaning.",Yüzme,Yüzme,the swimming of my head the day after heavy drinking.,I love swimming in the sea.,Denizde yüzmeyi çok severim.
+562,Once,adverb,Present perfect tense is not A1. Sentence was unnatural.,Bir Kere,Bir Kere,I have only once eaten pizza.,I play tennis once a week.,Haftada bir kere tenis oynarım.
+585,Pointed,noun,"'Pointed' is an adjective, not a noun.",Sivri,Sivri,The cat has pointed ears.,The cat has pointed ears.,Kedinin sivri kulakları var.
+600,Following,adjective,Example did not use the word 'following'. Changed Turkish to adjective meaning.,Takip Etme,Aşağıdaki,Follow that car!,Answer the following questions.,Aşağıdaki soruları cevaplayın.
+607,Clever,adjective,Example was a fragment.,Akıllı,Akıllı,clever like a fox.,My dog is very clever.,Köpeğim çok akıllı.
+611,Ugly,adjective,"Example used a figurative meaning and past tense, changing to literal A1 example.",Çirkin,Çirkin,He played an ugly trick on us.,That is an ugly shirt.,O çirkin bir gömlek.
+648,Tomorrow,adverb,Example was too long and complex for A1 level.,Yarın,Yarın,"If you don't get your life on track today, you're going to be very sorry tomorrow.",I have an exam tomorrow.,Yarın sınavım var.
+700,Easy,adjective,"Example was too long and complex for A1, and used easy as an adverb.",Kolay,Kolay,"Now that I know it's taken care of, I can rest easy at night.",The test is very easy.,Test çok kolay.
+701,Camp,noun,Example was a fragment.,Kamp,Kamp,a hunter's camp.,The camp is in the forest.,Kamp ormanda.
+707,High,adjective,Example used 'highs' as a noun instead of an adjective.,Yüksek,Yüksek,It was one of the highs of his career.,The wall is very high.,Duvar çok yüksek.
+708,Open,adjective,Example was a fragment.,Açık,Açık,an open hand; an open flower.,The door is open.,Kapı açık.
+709,Lot,adverb,Changed meaning to most common A1 sense and rewrote example to be simple.,Pay,Çok,lots of people think so.,I like this book a lot.,Bu kitabı çok severim.
+711,Desk,noun,Example was a fragment.,Çalışma Masası,Çalışma Masası,city desk.,My book is on the desk.,Kitabım çalışma masasında.
+723,Breakfast,noun,Example was too long and complex for A1.,Kahvaltı,Kahvaltı,You should put more protein in her breakfast so she will grow.,I eat eggs for breakfast.,Kahvaltıda yumurta yerim.
+725,Hurt,verb,Example was a fragment and used 'hurts' as a noun.,Acıtmak,Acıtmak,how to overcome old hurts of the past.,These shoes hurt my feet.,Bu ayakkabılar ayaklarımı acıtıyor.
+735,Flying,verb,Fixed Turkish translation to match the verb meaning.,Uçmak,Uçmak,Flying is fast and fun.,Flying is fast and fun.,Uçmak hızlı ve eğlencelidir.
+742,Us,pronoun,Changed 'Biz' to 'Bizi' object pronoun form.,Biz,Bizi,"Can you help us, please?","Can you help us, please?","Bize yardım edebilir misin, lütfen?"
+760,Excuse,noun,Example was too long and complex for A1.,Mazeret,Mazeret,Tell me why you were late – and I don't want to hear any excuses!,That is not a good excuse.,O iyi bir mazeret değil.
+764,Fishing,noun,Example was too complex for A1.,Balık Tutma,Balık Tutma,We had a good day's fishing at the weekend.,He likes fishing in the river.,"O, nehirde balık tutmayı sever."
+768,Miss,noun,"Changed to most common A1 verb meaning, rewrote example.",Kayıp,Özlemek,I think I’ll give the meeting a miss.,I miss my family.,Ailemi özlüyorum.
+813,Sailor,noun,Sentence was too long and complex for A1.,Denizci,Denizci,He's a talented sailor and has spent many years at sea.,He is a good sailor.,O iyi bir denizci.
+814,Summer,noun,Sentence was a fragment.,Yaz,Yaz,the heat of summer.,I like summer.,Yazı severim.
+816,Start,noun,Sentence was too long and used vocabulary above A1 level.,Başlangıç,Başlangıç,The movie was entertaining from start to finish.,This is a good start.,Bu iyi bir başlangıç.
+819,Same,adjective,Sentence was too complex for A1 level.,Aynı,Aynı,Are you the same person who phoned me yesterday?,We have the same car.,Aynı arabaya sahibiz.
+823,Husband,noun,Sentence was too long and complex for A1.,Koca,Koca,You should start dating so you can find a suitable husband.,Her husband is a doctor.,Onun kocası bir doktor.
+831,Discuss,verb,Updated translation to use the target Turkish word 'tartışmak'.,Tartışmak,Tartışmak,Let's discuss the plan.,Let's discuss the plan.,Hadi planı tartışalım.
+859,Healthy,adjective,Sentence structure was somewhat awkward and slightly too complex for A1.,Sağlıklı,Sağlıklı,He was father to three healthy kids.,My cat is very healthy.,Kedim çok sağlıklı.
+862,So,conjunction,Sentence used the wrong meaning of 'so' and was too complex.,Bu Yüzden,Bu Yüzden,"That is so.  You are responsible for this, is that not so?","I am late, so I run.","Geç kaldım, bu yüzden koşuyorum."
+864,Train,noun,Target word was used as a verb (antrenman yapmak) instead of a noun (tren).,Tren,Tren,She trained seven hours a day to prepare for the Olympics.,The train is very fast.,Tren çok hızlı.
+865,Bell,noun,Sentence used an idiom not appropriate for A1 level and meaning.,Zil,Zil,I’ll give you a bell later.,The school bell is ringing.,Okul zili çalıyor.
+901,Practice,noun,"Football practice implies 'antrenman' in Turkish, changing to a sentence that fits 'pratik' better.",Pratik,Pratik,Football practice is on Monday.,We need more practice.,Daha fazla pratiğe ihtiyacımız var.
+905,Biscuit,noun,Sentence was a fragment.,Bisküvi,Bisküvi,cheese and biscuits.,I eat a biscuit.,Bir bisküvi yerim.
+919,Pool,noun,Sentence was a fragment.,Havuz,Havuz,the pools of Solomon.,I swim in the pool.,Havuzda yüzerim.
+966,Music,noun,Example sentence too complex for A1 level. Rewritten using basic vocabulary.,Müzik,Müzik,I keep listening to this music because it's a masterpiece.,I like this music very much.,Bu müziği çok seviyorum.
+969,Sit,verb,Sentence too complex for A1 level. Rewritten using simpler words.,Oturmak,Oturmak,"After a long day of walking, it was good just to sit and relax.",Please sit on the chair.,Lütfen sandalyeye otur.
+979,Delicious,adjective,Example uses an advanced metaphorical sense. Replaced with a concrete A1 sentence.,Lezzetli,Lezzetli,The irony is delicious!,This soup is very delicious.,Bu çorba çok lezzetli.
+980,Wheel,noun,Fragment and metaphorical usage replaced. Turkish form updated to standard 'Tekerlek'.,Teker,Tekerlek,the wheel of life.,The car has four wheels.,Arabanın dört tekerleği var.
+994,Anything,pronoun,Fixed capitalization of Turkish field.,Herhangi Bir Şey,Herhangi bir şey,Do you want anything to drink?,Do you want anything to drink?,İçecek herhangi bir şey ister misin?
+1011,Best,adjective,Capitalization fixed in Turkish. Replaced idiomatic example with a literal one for A1.,En Iyi,En iyi,I did my best.,She is my best friend.,O benim en iyi arkadaşım.
+1029,Case,noun,Mismatch between Turkish meaning and example sense. Replaced with 'Durum' and simpler sentence.,Dava,Durum,"For a change, in this case, he was telling the truth.",This is a special case.,Bu özel bir durum.
+1057,Thin,adjective,"The previous example used 'thin' to mean 'zayıf', changed to a context where it means 'ince'.",İnce,İnce,The cat is very thin.,This book is very thin.,Bu kitap çok ince.
+1070,Wait,verb,The target word was used as a noun instead of a verb.,Beklemek,Beklemek,I had a very long wait at the airport security check.,Please wait here.,Lütfen burada bekle.
+1147,Top,noun,Changed Turkish to 'Üst' to better match the most common A1 meaning and the example.,Tepe,Üst,Write your name at the top.,Write your name at the top.,Adını en üste yaz.
+1152,Number,noun,"The original example used the meaning 'numara', rewritten to match 'sayı'.",Sayı,Sayı,What is your phone number?,Seven is a lucky number.,Yedi şanslı bir sayıdır.
+1162,Sell,verb,"The target word was used as a noun, rewritten to use it as a verb.",Satmak,Satmak,This is going to be a tough sell.,We sell fresh apples.,Taze elma satıyoruz.
+1163,Job,noun,"The original example was an advanced idiom, rewritten to be suitable for A1.",İş,İş,A job half done is hardly done at all.,I love my new job.,Yeni işimi seviyorum.
+1171,Practise,verb,Verb must end in -mek/-mak in Turkish. Simplified the example to better fit A1.,Pratik,Pratik yapmak,You should practise playing piano every day.,I practise English every day.,Her gün İngilizce pratik yaparım.
+1203,Pink,adjective,Example used 'pinks' as a noun and was too complex for A1.,Pembe,Pembe,This garden in particular has a beautiful bed of pinks.,My bag is pink.,Çantam pembe.
+1205,Writer,noun,Example was too long and complex for A1 level.,Yazar,Yazar,Has your girlfriend written you another letter already? She’s quite a writer!,He is a good writer.,O iyi bir yazar.
+1241,Nothing,pronoun,Second word in Turkish meaning should not be capitalized.,Hiçbir Şey,Hiçbir şey,There is nothing in the box.,There is nothing in the box.,Kutuda hiçbir şey yok.
+1256,Nurse,noun,Example sentence was too complex for A1 level.,Hemşire,Hemşire,They hired a nurse to care for their young boy.,She is a nurse.,O bir hemşire.
+1265,Brain,noun,Example used an idiomatic sense inappropriate for A1.,Beyin,Beyin,She was a total brain.,Use your brain.,Beynini kullan.
+1269,Copy,noun,Turkish meaning was a verb but pos is noun. Simplified example sentence.,Kopyala,Kopya,Please bring me the copies of those reports.,I need a copy of this book.,Bu kitabın bir kopyasına ihtiyacım var.
+1274,Sugar,noun,Example sentence was too complex for A1.,Şeker,Şeker,He usually has his coffee white with one sugar.,I put sugar in my tea.,Çayıma şeker koyarım.
+1296,Field,noun,Changed Turkish meaning to 'Tarla' to match the example context better.,Alan,Tarla,The cows are in the field.,The cows are in the field.,İnekler tarlada.
+1314,Turn,noun,"Example used turn as a verb, rewritten. Changed Turkish to common noun meaning 'Sıra'.",Dönüş,Sıra,They say they can turn the parts in two days.,It is my turn.,Benim sıram.
+1317,Blank,adjective,"Blank is an adjective, but 'Boşluk' is a noun. Example was a sentence fragment.",Boşluk,Boş,the double blank.,The page is blank.,Sayfa boş.
+1321,Young,adjective,Example used 'young' as a plural noun; rewrote for A1 adjective use.,Genç,Genç,The young of today are well-educated.,She is a young woman.,O genç bir kadın.
+1329,Due,adjective,Example used 'due' as a noun; rewrote for adjective use.,Vadesi Dolmuş,Vadesi Dolmuş,Give him his due — he is a good actor.,This bill is due.,Bu faturanın vadesi dolmuş.
+1330,Head,noun,Example was too long and complex for A1; rewrote.,Kafa,Kafa,Be careful when you pet that dog on the head; it may bite.,My head hurts today.,Bugün kafam ağrıyor.
+1365,List,noun,Example was a fragment using the verb sense; rewrote for A1 noun use.,Liste,Liste,to list a door.,I have a shopping list.,Bir alışveriş listem var.
+1368,Nice,adjective,Example was too long and idiomatic for A1; rewrote.,Güzel,Güzel,What is a nice person like you doing in a place like this?,The weather is nice today.,Bugün hava güzel.
+1374,Mobile,noun,Changed translation to the A1 noun meaning (mobile phone); rewrote example.,Mobil,Cep Telefonu,there are many business opportunities in mobile.,I have a new mobile.,Yeni bir cep telefonum var.
+1376,Juice,noun,Example was too complex for A1; rewrote.,Meyve Suyu,Meyve Suyu,Squeeze the orange and some juice will come out.,I drink juice every morning.,Her sabah meyve suyu içerim.
+1455,Me,pronoun,Rewrote example so the Turkish translation aligns exactly with 'Beni' instead of 'Bana'.,Beni,Beni,Can you help me?,He can see me.,O beni görebilir.
+1468,Taxi,noun,Example was a fragment and used taxi as a verb instead of a noun.,Taksi,Taksi,taxi down the runway.,I go home by taxi.,Eve taksiyle giderim.
+1479,Shopping,noun,"Example used shopping as a present participle (verb), not a noun.",Alışveriş,Alışveriş,He’s shopping for clothes.,I like shopping.,Alışverişi severim.
+1494,Sister,noun,Example sentence idiom was too complex for A1 level.,Kız Kardeş,Kız kardeş,My sister is always driving me crazy.,My sister is very tall.,Kız kardeşim çok uzun.
+1516,Scientist,noun,Changed Turkish to the more standard gender-neutral 'Bilim insanı'.,Bilim Adamı,Bilim insanı,Her father is a scientist.,Her father is a scientist.,Onun babası bir bilim insanı.
+1530,News,noun,Changed Turkish to singular dictionary form to match the context better.,Haberler,Haber,Is there any news about the storm?,Is there any news about the storm?,Fırtınadan haber var mı?
+1588,Make,verb,"Example used 'make' as a noun (brand), but POS is verb.",Yapmak,Yapmak,What make of car do you drive?,I make dinner every day.,Her gün akşam yemeği yaparım.
+1618,Cut,verb,"Example used 'cut' as a noun, but POS is verb.",Kesmek,Kesmek,He made a fine cut with his sword.,I cut the paper.,Kağıdı kesiyorum.
+1627,Believe,verb,Example sentence contains vocabulary above A1 level (faeries). Rewrote for A1.,İnanmak,İnanmak,I believe there are faeries.,I believe you.,Sana inanıyorum.
+1632,Poem,noun,Fixed Turkish translation to match the simple tense of the English sentence.,Şiir,Şiir,We read a short poem in class.,We read a short poem in class.,Sınıfta kısa bir şiir okuduk.
+1640,Cinema,noun,Example sentence is too long for A1 level (max 8 words). Rewrote for A1.,Sinema,Sinema,The cinema is right across the street from the restaurant.,Let's go to the cinema.,Sinemaya gidelim.
+1655,From,preposition,Capitalized the first letter of the Turkish meaning.,"-den, -dan","-Den, -dan",Where are you from?,Where are you from?,Nerelisin?
+1677,Fire,noun,Example is too long for A1 and contains non-basic vocabulary. Rewrote for A1.,Ateş,Ateş,We sat about the fire singing songs and telling tales.,The fire is very hot.,Ateş çok sıcaktır.
+1719,College,noun,Example was a fragment and not a complete natural sentence. Rewrote.,Üniversite,Üniversite,"College of Cardinals, College of Surgeons.",I go to college.,Üniversiteye gidiyorum.
+1731,Why,adverb,Example is way too long for A1 level. Rewrote.,Neden,Neden,"A good article will cover the who, the what, the when, the where, the why and the how.",Why are you sad?,Neden üzgünsün?
+1734,Past,adverb,Example was a fragment and too long for A1. Rewrote to a complete sentence.,Geçmiş,Geçmiş,a book about a time machine that can transport people back into the past.,The past is important.,Geçmiş önemlidir.
+1737,Eat,verb,"Example was an idiom, inappropriate for A1. Rewrote to a literal sentence and changed Turkish to dictionary form.",Yemek Yemek,Yemek,What’s eating you?,I eat an apple.,Bir elma yerim.
+1776,Dad,noun,Example contained an idiom ('always there for him'). Rewrote to simpler A1 language.,Baba,Baba,His dad was always there for him.,My dad is a doctor.,Babam bir doktordur.
+1779,Cool,adjective,Example was a fragment and used 'cool' as a noun. Rewrote to adjective sense.,Serin,Serin,in the cool of the morning.,The weather is cool today.,Bugün hava serin.
+1783,Bottle,noun,"Example used the plural 'bottles', but the exact target word 'bottle' must appear exactly once.",Şişe,Şişe,Beer is often sold in bottles.,I have a water bottle.,Bir su şişem var.
+1788,Winter,noun,Example used 'winter' as a verb instead of the noun sense. Rewrote.,Kış,Kış,"When they retired, they hoped to winter in Florida.",Winter is very cold.,Kış çok soğuktur.
+1794,Article,noun,Changed Turkish meaning to 'Makale' and replaced the fragment with a complete sentence.,Madde,Makale,a sales article.,This is a good article.,Bu iyi bir makale.
+1796,Into,preposition,Rewrote the sentence because the previous translation was incorrect ('içinde' instead of 'içine').,İçine,İçine,Mary danced into the house.,He walks into the room.,Odanın içine yürüyor.
+1838,Introduce,verb,Changed Turkish to 'Tanıştırmak' as it fits the context of introducing a person in the example.,Tanıtmak,Tanıştırmak,Let me introduce my friend.,Let me introduce my friend.,Arkadaşımı tanıştırayım.
+1843,Spoken,verb,"Changed to adjective 'Sözlü' because 'Spoken' is typically used as an adjective or past participle, and simplified the sentence.",Konuşmak,Sözlü,Which languages are spoken here?,I have a spoken exam.,Sözlü sınavım var.
+1849,Example,noun,Rewrote the sentence because it unnaturally used the target word twice.,Örnek,Örnek,This is a perfect example of example.,This is a good example.,Bu iyi bir örnek.
+1852,Under,preposition,Rewrote the unnatural example sentence.,Altında,Altında,I want to understand the concept of under.,The cat is under the table.,Kedi masanın altında.
+1927,Hungry,adjective,Sentence was too long and complex for A1 level.,Aç,Aç,My kids go to bed hungry every night because I haven't got any money.,The boy is very hungry.,Çocuk çok aç.
+1928,Price,noun,Sentence used metaphorical meaning and was too complex for A1.,Fiyat,Fiyat,I paid a high price for my folly.,The price is very high.,Fiyat çok yüksek.
+1931,Also,adverb,"Removed specific language (French) to comply with 'no real people, brands or places' rule.",Ayrıca,Ayrıca,She also speaks French.,I also like apples.,Ben ayrıca elma da severim.
+1938,Tower,noun,Example used 'tower' as a verb instead of a noun.,Kule,Kule,The office block towered into the sky.,The tower is very tall.,Kule çok uzun.
+1948,Lady,noun,Example was a sentence fragment using real names and titles.,Bayan,Bayan,Sir John Smith and Lady Smith.,That lady is my teacher.,Şu bayan benim öğretmenim.
+1950,Rude,adjective,"Sentence was too long, past tense, and contained real names.",Kaba,Kaba,Karen broke up with Fred because he was often rude to her.,The man is very rude.,Adam çok kaba.
+1981,Clock,noun,Example used metaphorical meaning ('on the clock') instead of literal meaning.,Saat,Saat,"This car has over 300,000 miles on the clock.",The clock is on the wall.,Saat duvarda.
+1984,Holiday,noun,Removed specific real-world group reference (Wiccan).,Tatil,Tatil,Today is a Wiccan holiday!,I need a long holiday.,Uzun bir tatile ihtiyacım var.
+1987,Baby,noun,Word 'due' used for pregnancy is too advanced for A1.,Bebek,Bebek,When is your baby due?,The baby is very small.,Bebek çok küçük.
+2043,Piece,noun,"Sentence used pie (turta) and piece as 'dilim', changed example to match 'parça'.",Parça,Parça,I’d like another piece of pie.,I need a piece of paper.,Bir parça kağıda ihtiyacım var.
+2050,Matter,noun,Original example was a fragment and contained two separate phrases. Rewrote into a simple A1 sentence.,Konu,Konu,What's the matter?;   state matters.,This is a serious matter.,Bu ciddi bir konudur.
+2055,Borrow,verb,Original example used a golf term completely inappropriate for A1. Changed Turkish to 'Ödünç Almak'.,Borç Almak,Ödünç Almak,This putt has a big left-to right borrow on it.,Can I borrow your pen?,Kalemini ödünç alabilir miyim?
+2060,Careful,adjective,"'Careful' is an adjective, so Turkish should be 'Dikkatli', not a verb. Simplified sentence.",Dikkatli Olmak,Dikkatli,He was a slow and careful driver.,He is a careful driver.,O dikkatli bir sürücüdür.
+2076,Smoking,noun,Capitalized Turkish properly and adjusted translation.,Sigara içme,Sigara İçmek,Smoking is bad for you.,Smoking is bad for you.,Sigara içmek senin için kötüdür.
+2097,On,preposition,Original example was ungrammatical. Changed to preposition meaning 'Üzerinde'.,Açık,Üzerinde,Can you on the light?,The book is on the table.,Kitap masanın üzerinde.
+2099,Strict,adjective,Original was a fragment. Rewrote to a complete sentence and changed Turkish to 'Katı'.,Sıkı,Katı,strict embrace.,Our teacher is very strict.,Öğretmenimiz çok katı.
+2119,Terrible,adjective,Changed Turkish to 'Berbat' to better fit the example sentence translation.,Korkunç,Berbat,The food here is terrible.,The food here is terrible.,Buradaki yemekler berbat.
+2157,Repeat,verb,Original example used noun sense and was too long/complex for A1. Changed to verb sense.,Tekrarlamak,Tekrarlamak,We gave up after the third repeat because it got boring.,Please repeat your name.,Lütfen adınızı tekrarlayın.
+2197,Garden,noun,"The example was a sentence fragment, not a complete sentence.",Bahçe,Bahçe,a vegetable garden  a flower garden.,We have a big garden.,Büyük bir bahçemiz var.
+2210,Event,noun,The example contained a real place and exceeded the 8-word limit for A1.,Etkinlik,Etkinlik,I went to an event in San Francisco last week.,This event is very fun.,Bu etkinlik çok eğlenceli.
+2248,Bar,noun,"The most common meaning of 'bar' at A1 is the drinking establishment, not a chocolate bar.",Çubuk,Bar,She eats a chocolate bar.,He works in a bar.,O bir barda çalışıyor.
+2249,Place,noun,The example exceeded the 8-word limit for A1.,Yer,Yer,I'm in a strange place at the moment.,This is a nice place.,Burası güzel bir yer.
+2254,He,pronoun,The example used 'he' as a noun instead of a pronoun.,O,O,Is your cat a he or a she?,He is my brother.,O benim erkek kardeşim.
+2255,Kick,verb,The example was a fragment and used 'kick' as a noun instead of a verb.,Tekme Atmak,Tekme Atmak,A kick to the knee.,I can kick the ball.,Topa tekme atabilirim.
+2260,Take,verb,The example used 'take' as a noun and included a real person's name.,Almak,Almak,"What's your take on this issue, Fred?",Take your bag with you.,Çantanı yanına al.
+2289,Boyfriend,noun,Only the first letter of the Turkish meaning should be capitalized.,Erkek Arkadaş,Erkek arkadaş,Her boyfriend is a doctor.,Her boyfriend is a doctor.,Onun erkek arkadaşı doktor.
+2304,Forget,verb,Original sentence was too long and used complex tenses for A1.,Unutmak,Unutmak,I have forgotten most of the things I learned in school.,I always forget his name.,Onun adını hep unuturum.
+2307,Push,verb,Original example used 'push' as a noun.,İtmek,İtmek,Give the door a hard push if it sticks.,Please push the door.,Lütfen kapıyı itin.
+2309,Chicken,noun,"Original example was too long, used advanced slang (adjective sense), and was too complex for A1.",Tavuk,Tavuk,"Why do you refuse to fight? Huh, I guess you're just too chicken.",I eat chicken for dinner.,Akşam yemeğinde tavuk yerim.
+2312,Boy,noun,Only first letter capitalized. Original sentence had slightly advanced vocabulary ('dating').,Erkek Çocuk,Erkek çocuk,Kate is dating a boy named Jim.,The boy has a red bike.,Erkek çocuğun kırmızı bir bisikleti var.
+2353,Store,noun,Original example used 'store' to mean storage facility and was too complex for A1.,Mağaza,Mağaza,This building used to be a store for old tires.,I work in a shoe store.,Bir ayakkabı mağazasında çalışıyorum.
+2355,Social,adjective,Original used 'social' as a noun and was too long/complex for A1.,Sosyal,Sosyal,They organized a social at the dance club to get people to know each other.,Cats are very social animals.,Kediler çok sosyal hayvanlardır.
+2368,Anybody,pronoun,Capitalization fix. Original example had an incorrect Turkish translation for this sense.,Herhangi Biri,Herhangi biri,Anybody will do.,Does anybody have a pen?,Herhangi birinin kalemi var mı?
+2396,Size,noun,Changed 'Boyut' to 'Beden' to be the most common translation for clothing size.,Boyut,Beden,What size is this shirt?,What size is this shirt?,Bu gömleğin bedeni ne?
+2405,Fly,verb,Original example used 'fly' as a noun and was too long for A1.,Uçmak,Uçmak,"There was a good wind, so I decided to give the kite a fly.",Birds can fly in the sky.,Kuşlar gökyüzünde uçabilir.
+2420,Better,adjective,Only the first letter of the Turkish meaning should be capitalized.,Daha İyi,Daha iyi,This book is better than that one.,This book is better than that one.,Bu kitap ondan daha iyi.
+2444,Cold,adjective,Example sentence was too complex for A1 level.,Soğuk,Soğuk,A cold wind whistled through the trees.,The weather is very cold today.,Bugün hava çok soğuk.
+2463,Key,adjective,"Example too hard for A1, pos should be noun.",Anahtar,Anahtar,The key to solving this problem is persistence.,This is my room key.,Bu benim oda anahtarım.
+2471,Afternoon,noun,Second word of Turkish meaning shouldn't be capitalized.,Öğleden Sonra,Öğleden sonra,I sleep a little in the afternoon.,I sleep a little in the afternoon.,Öğleden sonra biraz uyurum.
+2507,T-shirt,noun,Example sentence too long and complex for A1.,Tişört,Tişört,Many bands make more money from T-shirt sales than from sale of tickets.,I have a white T-shirt.,Beyaz bir tişörtüm var.
+2517,Shoe,noun,"Example too long for A1, translation didn't match original meaning.",Ayakkabı,Ayakkabı,"Get your shoes on now, or you'll be late for school.",This shoe is too big.,Bu ayakkabı çok büyük.
+2526,Rice,noun,Translation used 'pilav' instead of 'pirinç'.,Pirinç,Pirinç,We eat rice with chicken.,Rice is very expensive.,Pirinç çok pahalı.
+2536,Build,verb,Second word of Turkish meaning shouldn't be capitalized.,İnşa Etmek,İnşa etmek,They build a new school here.,They build a new school here.,Burada yeni bir okul inşa ediyorlar.
+2566,New,adjective,"Example was an idiom and a fragment, violating A1 rules.",Yeni,Yeni,"Out with the old, in with the new.",This is a new book.,Bu yeni bir kitap.
+2603,Test,noun,Example used the word as a verb instead of a noun and was too complex for A1.,Test,Test,Climbing the mountain tested our stamina.,I have an English test today.,Bugün İngilizce testim var.
+2608,Dancing,noun,Example used the verb form (danced) instead of the target word exactly (dancing).,Dans,Dans,I danced with her all night long.,Do you like dancing?,Dans etmeyi sever misin?
+2615,Leaf,noun,Example was a fragment and did not use the common meaning.,Yaprak,Yaprak,gold leaf.,A green leaf fell from the tree.,Ağaçtan yeşil bir yaprak düştü.
+2619,Ask,verb,Example used the word as a noun instead of a verb and was a fragment.,Sormak,Sormak,"I know this is a big ask, but ….",Can I ask a question?,Bir soru sorabilir miyim?
+2660,Busy,adjective,Example used the word as a verb instead of an adjective and was too complex for A1.,Meşgul,Meşgul,On my vacation I'll busy myself with gardening.,I am very busy today.,Bugün çok meşgulüm.
+2667,Box,noun,"Used 'box' as a verb in the example, but the pos is noun and Turkish is 'Kutu'. Rewrote example to use 'box' as a noun.",Kutu,Kutu,Leave this place before I box you!,Put the books in the box.,Kitapları kutuya koy.
+2716,White,adjective,The original sentence was a bit too complex/imperative with 'ink' for A1. Simplified the example.,Beyaz,Beyaz,Write in black ink on white paper.,My new car is white.,Yeni arabam beyaz.
+2718,Goal,noun,Original example was too long and contained advanced vocabulary for A1. Rewrote to a simpler sentence.,Amaç,Amaç,My lifelong goal is to get into a Hollywood movie.,My goal is to learn English.,Amacım İngilizce öğrenmek.
+2766,Reading,noun,"The example used the verb 'read', but the target word is the noun 'reading'. Rewrote the example to use the noun form.",Okuma,Okuma,Have you read this book?,Reading is my favourite hobby.,Okuma en sevdiğim hobidir.
+2772,Little,adjective,'Little' as an adjective means 'Küçük' at A1 level. The original 'Biraz' translates to the adverb sense 'a little'. Fixed translation and rewrote example.,Biraz,Küçük,Can I try a little of that sauce?,I have a little dog.,Küçük bir köpeğim var.
+2776,Beautiful,adjective,"The original example was a sentence fragment ('Hey, beautiful!'). Rewrote to a natural, complete sentence.",Güzel,Güzel,"Hey, beautiful!",This flower is very beautiful.,Bu çiçek çok güzel.
+2781,Meal,noun,The translation in the original example used 'öğün' instead of 'yemek'. Rewrote to use a sentence that translates directly to 'yemek'.,Yemek,Yemek,Breakfast is my favourite meal.,This meal is very delicious.,Bu yemek çok lezzetli.
+2813,Saw,noun,"At A1 level, 'saw' is most commonly the past tense of the verb 'see', rather than the noun 'testere' (tool).",Testere,Görmek,My father cuts wood with a saw.,I saw my friend yesterday.,Dün arkadaşımı gördüm.
+2823,Feeling,noun,Changed the Turkish meaning to 'His' to better match the usage in the provided sentence and its common translation.,Duygu,His,I have a good feeling about today.,I have a good feeling about today.,Bugün hakkında içimde iyi bir his var.
+2850,Elementary,adjective,"Turkish translation had multiple words (İlk, temel). Changed to the single most common meaning 'Temel' and updated the example so it doesn't rely on the compound noun 'elementary school'.","İlk, temel",Temel,My son goes to elementary school.,We learn elementary English.,Temel İngilizce öğreniyoruz.
+2885,Surf,noun,"At A1 level, surf is most commonly used as a verb.",Dalga köpüğü,Sörf yapmak,The children play in the surf.,I surf the internet every day.,Her gün internette sörf yaparım.
+2889,Pardon,noun,Changed Turkish meaning to standard single word form.,"Pardon, efendim",Pardon,Pardon? Can you say that again?,Pardon? Can you say that again?,Efendim? Tekrar söyler misin?
+2900,Waitress,noun,Matched example Turkish translation to the exact Turkish meaning provided.,Kadın garson,Kadın garson,The waitress brings our food.,The waitress brings our food.,Kadın garson yemeğimizi getiriyor.
+2910,Classmate,noun,Replaced the specific name 'Ali' with a pronoun to comply with the no real people rule.,Sınıf arkadaşı,Sınıf arkadaşı,Ali is my classmate.,He is my classmate.,O benim sınıf arkadaşım.
+2912,Underline,noun,"At A1, 'underline' is most commonly a verb. Updated meaning and example.",Alt çizgi,Altını çizmek,Put an underline under the new words.,Underline the correct word.,Doğru kelimenin altını çizin.
+2914,All right,adjective,Simplified Turkish meaning to a single word that matches the example.,"İyi, tamam",İyi,Are you all right?,Are you all right?,İyi misin?
+2924,PM,adverb,Removed parenthesis for dictionary form.,Öğleden sonra (ÖS),Öğleden sonra,The shop closes at 6 PM.,The shop closes at 6 PM.,Dükkân akşam altıda kapanır.

@@ -2,12 +2,12 @@
 
 Wordlet, İngilizce kelime dağarcığınızı geliştirmenize yardımcı olan, tamamen **Swift** ve **SwiftUI** kullanılarak geliştirilmiş modern bir iOS uygulamasıdır. 
 
-Ana ekranınıza ekleyebileceğiniz **Günlük Kelime Widget**'ı ile her gün yeni kelimeler öğrenebilir, CEFR standartlarındaki (A1-C2) seviye sistemiyle kendi hızınızda ilerleyebilirsiniz.
+Ana ekranınıza ekleyebileceğiniz **Günlük Kelime Widget**'ı ile her gün yeni kelimeler öğrenebilir, CEFR standartlarındaki (A1-B2) seviye sistemiyle kendi hızınızda ilerleyebilirsiniz.
 
 ## ✨ Öne Çıkan Özellikler
 
 - 📱 **Günlük Kelime Widget'ı:** Uygulamayı açmanıza bile gerek kalmadan ana ekranınızda her gün yeni bir İngilizce kelime ve anlamını görün.
-- 🎯 **CEFR Seviyeleri (A1 - C2):** Kendi seviyenize uygun kelimelerle çalışın. Sınavları geçerek yeni zorluk seviyelerinin kilitlerini açın.
+- 🎯 **CEFR Seviyeleri (A1 - B2):** Kendi seviyenize uygun kelimelerle çalışın. Sınavları geçerek yeni zorluk seviyelerinin kilitlerini açın.
 - 🎮 **Oyunlaştırılmış Öğrenme (Gamification):**
   - **Günlük Testler:** Her gün pratik yaparak serinizi (streak) koruyun.
   - **Seviye Sınavları:** Bir üst seviyeye geçmek için minimum %70 başarı sağlayın.
@@ -89,6 +89,31 @@ Bu projeye katkıda bulunmak isterseniz, lütfen bir "Pull Request" (PR) oluştu
 5. Bir Pull Request açın!
 
 ---
+
+## 📚 Kelime Verisi
+
+Kelimelerin seviyesi (`level`), türü (`pos`) ve sıklığı (`freqRank`) `tools/wordpipeline/build_words.py` ile üretilir ve `Shared/words.json` içine yazılır. Kelime eklendiğinde veya değiştirildiğinde yeniden çalıştırın:
+
+```bash
+python3 -m venv .venv && .venv/bin/pip install -r tools/wordpipeline/requirements.txt
+.venv/bin/python tools/wordpipeline/build_words.py
+```
+
+Raporlar (`tools/wordpipeline/reports/`): seviye dağılımı, şablon/zor örnek cümleler, şüpheli çeviriler ve eksik temel kelimeler.
+
+Örnek cümle üretimi ve anlam incelemesi bir dil modeliyle yapılır (varsayılan: Antigravity CLI `agy`; `--backend gemini` ile Gemini API):
+
+```bash
+.venv/bin/python tools/wordpipeline/generate_content.py examples --level A1   # şablon/zor cümleleri yeniden yaz
+.venv/bin/python tools/wordpipeline/generate_content.py missing --level A1    # eksik temel kelimeleri ekle
+.venv/bin/python tools/wordpipeline/review_agy.py --level A1                   # anlam incelemesi (Draw ≠ beraberlik gibi)
+```
+
+Her çıktı doğrulanır (seviyeye uygunluk, hedef kelimenin cümlede geçmesi). `reports/review_*.csv` her değişikliği gerekçesiyle listeler; yayından önce en az A1–A2 bir insan tarafından gözden geçirilmelidir.
+
+**Kaynaklar ve atıf**
+- The CEFR-J Wordlist Version 1.5. Compiled by Yukio Tono, Tokyo University of Foreign Studies. http://www.cefr-j.org/download.html (via [Open Language Profiles](https://github.com/openlanguageprofiles/olp-en-cefrj))
+- Kelime sıklığı: [wordfreq](https://github.com/rspeer/wordfreq) (Robyn Speer)
 
 ## 📜 Lisans
 
