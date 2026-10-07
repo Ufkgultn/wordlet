@@ -100,13 +100,34 @@ public class SocialManager: NSObject, ObservableObject, UNUserNotificationCenter
         return nil
     }
     
+    /// Çıkışta önceki kullanıcının verisi bellekte / diskte kalmasın
+    public func clearSession() {
+        pollingTask?.cancel()
+        pollingTask = nil
+        myProfile = nil
+        friends = []
+        pendingRequests = []
+        sentRequestReceiverIds = []
+        friendsLeaderboard = []
+        globalLeaderboard = []
+        incomingMatchInvites = []
+        UserDefaults.standard.removeObject(forKey: "local_user_profile")
+    }
+
     // MARK: - Profile & Friends Fetching
     
     public func loadProfileAndFriends() async {
         guard let user = AuthManager.shared.currentUser else { return }
+
+        // Misafirin Supabase hesabı yok (id UUID değil); online özellikler kapalı
+        guard !AuthManager.shared.isGuest else {
+            clearSession()
+            return
+        }
+
         isLoading = true
         errorMessage = nil
-        
+
         do {
             // 1. Fetch current user's profile from Supabase
             let profileResponse: [PublicProfile] = try await client
@@ -120,24 +141,24 @@ public class SocialManager: NSObject, ObservableObject, UNUserNotificationCenter
                 self.myProfile = existing
                 saveLocalProfile(existing)
             } else {
-                // Profile row does not exist yet: create it in the database
+                // Profile row does not exist yet (normalde signup trigger'ı oluşturur)
                 let cleanUsername = user.email.components(separatedBy: "@").first ?? "user_\(Int.random(in: 100...999))"
-                let newProfile = PublicProfile(
+                let draft = ProfileInsert(
                     id: user.id,
                     username: cleanUsername.lowercased(),
-                    displayName: "\(user.firstName) \(user.lastName)".trimmingCharacters(in: .whitespaces),
-                    currentLevel: ProgressManager.shared.progress.currentLevel.rawValue,
-                    xp: 0,
-                    avatarEmoji: "🚀",
-                    matchesWon: 0,
-                    matchesPlayed: 0
+                    display_name: "\(user.firstName) \(user.lastName)".trimmingCharacters(in: .whitespaces),
+                    current_level: ProgressManager.shared.progress.currentLevel.rawValue,
+                    avatar_emoji: "🚀"
                 )
-                
-                try await client
+
+                let newProfile: PublicProfile = try await client
                     .from("profiles")
-                    .insert(newProfile)
+                    .insert(draft)
+                    .select()
+                    .single()
                     .execute()
-                
+                    .value
+
                 self.myProfile = newProfile
                 saveLocalProfile(newProfile)
             }
@@ -194,36 +215,40 @@ public class SocialManager: NSObject, ObservableObject, UNUserNotificationCenter
         self.friendsLeaderboard = list.sorted(by: { $0.xp > $1.xp })
     }
     
-    public func recordDuelWin(xpGained: Int, isWin: Bool) async {
-        guard var profile = myProfile else { return }
-        
-        profile.matchesPlayed += 1
-        if isWin {
-            profile.matchesWon += 1
-            profile.xp += xpGained
-        } else {
-            profile.xp += max(5, xpGained / 4)
-        }
-        
-        saveLocalProfile(profile)
-        self.myProfile = profile
-        
-        // Sync with real Supabase database
+    /// Robot düellosu sonucu. XP'yi sunucu verir (günlük limitli); online maç XP'si
+    /// submit_match_score ile sunucuda hesaplanır.
+    public func recordBotDuel(won: Bool) async {
+        guard myProfile != nil else { return }
         do {
-            let updatePayload: [String: AnyJSON] = [
-                "xp": .integer(profile.xp),
-                "matches_won": .integer(profile.matchesWon),
-                "matches_played": .integer(profile.matchesPlayed)
-            ]
-            try await client
-                .from("profiles")
-                .update(updatePayload)
-                .eq("id", value: profile.id)
+            let updated: PublicProfile = try await client
+                .rpc("record_bot_duel", params: ["p_won": won])
                 .execute()
+                .value
+            self.myProfile = updated
+            saveLocalProfile(updated)
         } catch {
-            print("Failed to sync duel win to database: \(error)")
+            print("Failed to record bot duel: \(error)")
         }
-        
+        await fetchLeaderboards()
+    }
+
+    /// Sunucudaki güncel XP / maç istatistiklerini çek
+    public func refreshMyProfile() async {
+        guard let id = myProfile?.id else { return }
+        do {
+            let rows: [PublicProfile] = try await client
+                .from("profiles")
+                .select()
+                .eq("id", value: id)
+                .execute()
+                .value
+            if let fresh = rows.first {
+                self.myProfile = fresh
+                saveLocalProfile(fresh)
+            }
+        } catch {
+            print("Failed to refresh profile: \(error)")
+        }
         await fetchLeaderboards()
     }
     
@@ -277,37 +302,42 @@ public class SocialManager: NSObject, ObservableObject, UNUserNotificationCenter
         saveLocalProfile(updated)
         self.myProfile = updated
         
+        // Sadece istemcinin yazabildiği alanlar (xp / matches_* sunucuda korunuyor)
         try await client
             .from("profiles")
-            .update(updated)
+            .update(ProfileUpdate(
+                username: updated.username,
+                display_name: updated.displayName,
+                avatar_emoji: updated.avatarEmoji
+            ))
             .eq("id", value: profile.id)
             .execute()
-        
+
         await fetchLeaderboards()
     }
-    
+
     public func updatePushToken(_ token: String) async {
         UserDefaults.standard.set(token, forKey: "pendingPushToken")
         guard let profile = myProfile else { return }
-        
-        // Sadece eğer token değişmişse veritabanını güncelle
-        if profile.pushToken != token {
-            var updated = profile
-            updated.pushToken = token
-            
-            saveLocalProfile(updated)
-            self.myProfile = updated
-            
-            do {
-                try await client
-                    .from("profiles")
-                    .update(["push_token": token])
-                    .eq("id", value: profile.id)
-                    .execute()
-                print("Push token successfully updated in Supabase.")
-            } catch {
-                print("Failed to update push token in Supabase: \(error)")
-            }
+
+        // Sadece token (veya kullanıcı) değişmişse veritabanını güncelle
+        let syncedKey = "syncedPushToken_\(profile.id)"
+        guard UserDefaults.standard.string(forKey: syncedKey) != token else { return }
+
+        #if DEBUG
+        let apnsEnv = "sandbox"
+        #else
+        let apnsEnv = "production"
+        #endif
+
+        do {
+            try await client
+                .from("device_tokens")
+                .upsert(DeviceTokenRow(user_id: profile.id, token: token, apns_env: apnsEnv), onConflict: "user_id")
+                .execute()
+            UserDefaults.standard.set(token, forKey: syncedKey)
+        } catch {
+            print("Failed to update push token in Supabase: \(error)")
         }
     }
     
@@ -330,21 +360,21 @@ public class SocialManager: NSObject, ObservableObject, UNUserNotificationCenter
     }
     
     public func sendFriendRequest(receiverId: String) async throws {
-        guard let profile = myProfile else { return }
-        
-        let requestData: [String: AnyJSON] = [
-            "id": .string(UUID().uuidString),
-            "sender_id": .string(profile.id),
-            "receiver_id": .string(receiverId),
-            "status": .string("pending")
-        ]
-        
-        try await client
-            .from("friendships")
-            .insert(requestData)
+        guard myProfile != nil else { return }
+
+        // Karşı taraf zaten istek attıysa sunucu otomatik kabul eder
+        let status: String = try await client
+            .rpc("send_friend_request", params: ["p_receiver": receiverId])
             .execute()
-            
-        self.sentRequestReceiverIds.insert(receiverId)
+            .value
+
+        if status == "accepted" {
+            await fetchRealRequests(isInitial: true)
+            await fetchRealFriends()
+            await fetchLeaderboards()
+        } else {
+            self.sentRequestReceiverIds.insert(receiverId)
+        }
     }
     
     public func acceptFriendRequest(requestId: String) async {
@@ -407,13 +437,14 @@ public class SocialManager: NSObject, ObservableObject, UNUserNotificationCenter
                 return
             }
             
-            let allProfiles: [PublicProfile] = try await client
+            let friendProfiles: [PublicProfile] = try await client
                 .from("profiles")
                 .select()
+                .in("id", values: friendIDs)
                 .execute()
                 .value
-            
-            self.friends = allProfiles.filter { friendIDs.contains($0.id) && $0.id != profile.id }
+
+            self.friends = friendProfiles.filter { $0.id != profile.id }
         } catch {
             print("Fetch real friends error: \(error)")
             self.friends = []
@@ -480,6 +511,27 @@ public class SocialManager: NSObject, ObservableObject, UNUserNotificationCenter
             }
         }
     }
+}
+
+// Write payloads: only the columns the client is granted on the server
+private struct ProfileInsert: Encodable {
+    let id: String
+    let username: String
+    let display_name: String
+    let current_level: String
+    let avatar_emoji: String
+}
+
+private struct ProfileUpdate: Encodable {
+    let username: String
+    let display_name: String
+    let avatar_emoji: String
+}
+
+private struct DeviceTokenRow: Encodable {
+    let user_id: String
+    let token: String
+    let apns_env: String
 }
 
 // Swift Codable wrappers for parsing complex joins

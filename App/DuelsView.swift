@@ -22,9 +22,16 @@ struct DuelsView: View {
     @State private var selectedRobotLevel = 1
     @State private var selectedAITargetLevel: CEFRLevel = .a1
     
+    private var nextLevelHint: String {
+        let level = selectedAITargetLevel
+        if let next = level.next, !RobotArenaProgress.isCompleted(level) {
+            return "Her maçta rastgele bir oyun gelir. \(next.rawValue) arenasını açmak için \(level.rawValue)'deki 30 robotun hepsini yen!"
+        }
+        return "Robotları yenerek seviyeleri aç. Her maçta rastgele bir oyun gelir; seviye yükseldikçe robot hızlanır!"
+    }
+    
     private var currentRobotLevelStorage: Int {
-        let val = UserDefaults.standard.integer(forKey: "robotDuelLevel_\(selectedAITargetLevel.rawValue)")
-        return val == 0 ? 1 : val
+        RobotArenaProgress.currentRobotLevel(for: selectedAITargetLevel)
     }
     
     // Friend Duel State
@@ -43,6 +50,8 @@ struct DuelsView: View {
     ]
     
     @AppStorage("selectedMinigame") private var selectedMinigame: Int = 0
+    // Robot düellosunda her maç rastgele bir oyun açılır
+    @State private var robotGameMode = 0
     
     // Login Sheet
     @State private var showLoginSheet = false
@@ -115,7 +124,7 @@ struct DuelsView: View {
                 VStack {
                     HStack(spacing: 12) {
                         Image(systemName: "bell.fill")
-                            .foregroundColor(.white)
+                            .foregroundColor(Theme.fg)
                             .font(.system(size: 20))
                         Text(socialManager.inAppNotificationMessage)
                             .font(.system(size: 14, weight: .semibold))
@@ -191,7 +200,8 @@ struct DuelsView: View {
     }
     
     private func getGameMode(isRobot: Bool) -> Int {
-        if !isRobot, let active = matchManager.activeMatch {
+        if isRobot { return robotGameMode }
+        if let active = matchManager.activeMatch {
             if active.mode.contains("_") {
                 return Int(active.mode.split(separator: "_").last ?? "0") ?? 0
             }
@@ -231,11 +241,11 @@ struct DuelsView: View {
                     HStack(spacing: 6) {
                         Text(profile?.displayName ?? "Misafir Oyuncu")
                             .font(.system(size: 20, weight: .bold, design: .rounded))
-                            .foregroundColor(.white)
+                            .foregroundColor(Theme.fg)
                         
                         Text(profile?.currentLevel ?? "A1")
                             .font(.system(size: 10, weight: .bold))
-                            .foregroundColor(.black)
+                            .foregroundColor(Theme.onAccent)
                             .padding(.horizontal, 6)
                             .padding(.vertical, 2)
                             .background(Capsule().fill(Theme.accent))
@@ -243,7 +253,7 @@ struct DuelsView: View {
                     
                     Text("@\(profile?.username ?? "kullanici")")
                         .font(.subheadline)
-                        .foregroundColor(.white.opacity(0.55))
+                        .foregroundColor(Theme.fg.opacity(0.55))
                 }
                 
                 Spacer()
@@ -257,7 +267,7 @@ struct DuelsView: View {
                             Text("Giriş Yap")
                         }
                         .font(.caption.bold())
-                        .foregroundColor(.black)
+                        .foregroundColor(Theme.onAccent)
                         .padding(.horizontal, 12)
                         .padding(.vertical, 8)
                         .background(Capsule().fill(Theme.accent))
@@ -278,10 +288,10 @@ struct DuelsView: View {
         .padding(18)
         .background(
             RoundedRectangle(cornerRadius: 22)
-                .fill(Color.white.opacity(0.05))
+                .fill(Theme.fg.opacity(0.05))
                 .overlay(
                     RoundedRectangle(cornerRadius: 22)
-                        .stroke(Color.white.opacity(0.1), lineWidth: 1)
+                        .stroke(Theme.fg.opacity(0.1), lineWidth: 1)
                 )
         )
         .padding(.horizontal, 20)
@@ -296,16 +306,16 @@ struct DuelsView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(value)
                     .font(.system(size: 14, weight: .bold, design: .rounded))
-                    .foregroundColor(.white)
+                    .foregroundColor(Theme.fg)
                 Text(title)
                     .font(.system(size: 9))
-                    .foregroundColor(.white.opacity(0.5))
+                    .foregroundColor(Theme.fg.opacity(0.5))
             }
             Spacer(minLength: 0)
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 8)
-        .background(RoundedRectangle(cornerRadius: 12).fill(Color.white.opacity(0.04)))
+        .background(RoundedRectangle(cornerRadius: 12).fill(Theme.fg.opacity(0.04)))
         .frame(maxWidth: .infinity)
     }
     
@@ -317,7 +327,7 @@ struct DuelsView: View {
                 HStack(spacing: 12) {
                     ZStack {
                         Circle()
-                            .fill(Color.white.opacity(0.15))
+                            .fill(Theme.fg.opacity(0.15))
                             .frame(width: 48, height: 48)
                         Text(invite.player1Avatar)
                             .font(.title2)
@@ -326,10 +336,10 @@ struct DuelsView: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("\(invite.player1Name) Seni Davet Ediyor!")
                             .font(.system(size: 14, weight: .bold))
-                            .foregroundColor(.white)
+                            .foregroundColor(Theme.fg)
                         Text("Mod: \(invite.mode.replacingOccurrences(of: "friend_", with: "Mod "))")
                             .font(.system(size: 12))
-                            .foregroundColor(.white.opacity(0.7))
+                            .foregroundColor(Theme.fg.opacity(0.7))
                     }
                     
                     Spacer()
@@ -386,48 +396,39 @@ struct DuelsView: View {
             VStack(alignment: .leading, spacing: 14) {
                 Text("🎮 OYUN ODALARI")
                     .font(.caption.bold())
-                    .foregroundColor(Theme.accent)
+                    .foregroundColor(Theme.accentText)
                     .padding(.horizontal, 20)
                 
-                VStack(spacing: 12) {
+                HStack(spacing: 8) {
                     ForEach(gameModes, id: \.0) { mode in
                         Button(action: {
                             selectedMinigame = mode.0
                             showModeRoom = true
                         }) {
-                            HStack(spacing: 16) {
+                            VStack(spacing: 6) {
                                 ZStack {
-                                    RoundedRectangle(cornerRadius: 16)
+                                    RoundedRectangle(cornerRadius: 12)
                                         .fill(mode.4.opacity(0.2))
-                                        .frame(width: 56, height: 56)
+                                        .frame(width: 40, height: 40)
                                     Image(systemName: mode.2)
-                                        .font(.system(size: 24, weight: .semibold))
+                                        .font(.system(size: 17, weight: .semibold))
                                         .foregroundColor(mode.4)
                                 }
-                                
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text(mode.1)
-                                        .font(.system(size: 17, weight: .bold))
-                                        .foregroundColor(.white)
-                                    Text(mode.3)
-                                        .font(.system(size: 13))
-                                        .foregroundColor(.white.opacity(0.6))
-                                        .lineLimit(2)
-                                        .fixedSize(horizontal: false, vertical: true)
-                                }
-                                
-                                Spacer(minLength: 0)
-                                
-                                Image(systemName: "chevron.right")
-                                    .font(.system(size: 14, weight: .bold))
-                                    .foregroundColor(.white.opacity(0.3))
+                                Text(shortRoomTitle(mode.1))
+                                    .font(.system(size: 10, weight: .semibold))
+                                    .foregroundColor(Theme.fg.opacity(0.85))
+                                    .multilineTextAlignment(.center)
+                                    .lineLimit(2)
+                                    .minimumScaleFactor(0.8)
+                                    .frame(height: 26, alignment: .top)
                             }
-                            .padding(16)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 10)
                             .background(
-                                RoundedRectangle(cornerRadius: 20)
-                                    .fill(Color.white.opacity(0.04))
+                                RoundedRectangle(cornerRadius: 14)
+                                    .fill(Theme.fg.opacity(0.04))
                                     .overlay(
-                                        RoundedRectangle(cornerRadius: 20)
+                                        RoundedRectangle(cornerRadius: 14)
                                             .stroke(mode.4.opacity(0.3), lineWidth: 1)
                                     )
                             )
@@ -446,14 +447,19 @@ struct DuelsView: View {
     
 
     
+    /// "Yazma Yarışı Odası" -> "Yazma Yarışı" (kompakt kutucuklar için)
+    private func shortRoomTitle(_ title: String) -> String {
+        title.replacingOccurrences(of: " Odası", with: "")
+    }
+    
     private var aiRobotArenaSection: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack {
                 Text("🤖 YAPAY ZEKA ARENASI")
                     .font(.caption.bold())
-                    .foregroundColor(Theme.accent)
+                    .foregroundColor(Theme.accentText)
                 Spacer()
-                Text("Seviye \(currentRobotLevelStorage)/30")
+                Text(RobotArenaProgress.isCompleted(selectedAITargetLevel) ? "✓ Tamamlandı" : "Seviye \(currentRobotLevelStorage)/30")
                     .font(.caption.bold())
                     .foregroundColor(.orange)
             }
@@ -461,23 +467,35 @@ struct DuelsView: View {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 8) {
                     ForEach(CEFRLevel.allCases, id: \.self) { level in
+                        let isLevelUnlocked = RobotArenaProgress.isUnlocked(level)
                         Button(action: {
+                            guard isLevelUnlocked else {
+                                UINotificationFeedbackGenerator().notificationOccurred(.warning)
+                                return
+                            }
                             selectedAITargetLevel = level
                         }) {
-                            Text(level.rawValue)
-                                .font(.system(size: 14, weight: .bold))
-                                .foregroundColor(selectedAITargetLevel == level ? .white : .white.opacity(0.6))
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, 8)
-                                .background(Capsule().fill(selectedAITargetLevel == level ? Theme.accent : Color.white.opacity(0.1)))
+                            HStack(spacing: 4) {
+                                if !isLevelUnlocked {
+                                    Image(systemName: "lock.fill").font(.system(size: 11))
+                                } else if RobotArenaProgress.isCompleted(level) {
+                                    Image(systemName: "checkmark.seal.fill").font(.system(size: 11))
+                                }
+                                Text(level.rawValue)
+                                    .font(.system(size: 14, weight: .bold))
+                            }
+                            .foregroundColor(selectedAITargetLevel == level ? .white : Theme.fg.opacity(isLevelUnlocked ? 0.6 : 0.3))
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 8)
+                            .background(Capsule().fill(selectedAITargetLevel == level ? Theme.accent : Theme.fg.opacity(isLevelUnlocked ? 0.1 : 0.04)))
                         }
                     }
                 }
             }
             
-            Text("Robotları yenerek seviyeleri aç. Seviye yükseldikçe robot hızlanır ve kelime sayısı artar!")
+            Text(nextLevelHint)
                 .font(.caption2)
-                .foregroundColor(.white.opacity(0.55))
+                .foregroundColor(Theme.fg.opacity(0.55))
             
             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 10), count: 5), spacing: 12) {
                 ForEach(1...30, id: \.self) { levelNum in
@@ -487,32 +505,33 @@ struct DuelsView: View {
                     Button(action: {
                         guard isUnlocked else { return }
                         selectedRobotLevel = levelNum
+                        robotGameMode = gameModes.randomElement()?.0 ?? 0
                         showRobotDuel = true
                     }) {
                         VStack(spacing: 4) {
                             ZStack {
                                 Circle()
-                                    .fill(isUnlocked ? (isCurrent ? Color.orange.opacity(0.25) : Color.white.opacity(0.08)) : Color.white.opacity(0.02))
+                                    .fill(isUnlocked ? (isCurrent ? Color.orange.opacity(0.25) : Theme.fg.opacity(0.08)) : Theme.fg.opacity(0.02))
                                     .frame(width: 48, height: 48)
                                     .overlay(
                                         Circle()
-                                            .stroke(isCurrent ? Color.orange : (isUnlocked ? Color.white.opacity(0.18) : Color.clear), lineWidth: 1.5)
+                                            .stroke(isCurrent ? Color.orange : (isUnlocked ? Theme.fg.opacity(0.18) : Color.clear), lineWidth: 1.5)
                                     )
                                 
                                 if isUnlocked {
                                     Text("\(levelNum)")
                                         .font(.system(size: 15, weight: .bold, design: .rounded))
-                                        .foregroundColor(.white)
+                                        .foregroundColor(Theme.fg)
                                 } else {
                                     Image(systemName: "lock.fill")
                                         .font(.system(size: 13))
-                                        .foregroundColor(.white.opacity(0.25))
+                                        .foregroundColor(Theme.fg.opacity(0.25))
                                 }
                             }
                             
                             Text("Seviye \(levelNum)")
                                 .font(.system(size: 8, weight: .semibold))
-                                .foregroundColor(isUnlocked ? .white.opacity(0.6) : .white.opacity(0.25))
+                                .foregroundColor(isUnlocked ? Theme.fg.opacity(0.6) : Theme.fg.opacity(0.25))
                         }
                     }
                     .disabled(!isUnlocked)
@@ -520,7 +539,7 @@ struct DuelsView: View {
             }
         }
         .padding(20)
-        .background(RoundedRectangle(cornerRadius: 22).fill(Color.white.opacity(0.04)))
+        .background(RoundedRectangle(cornerRadius: 22).fill(Theme.fg.opacity(0.04)))
         .padding(.horizontal, 20)
     }
     
@@ -598,7 +617,7 @@ struct DuelsView: View {
             
             Text(player.displayName)
                 .font(.system(size: 13, weight: .bold))
-                .foregroundColor(isMe ? Theme.accent : .white)
+                .foregroundColor(isMe ? Theme.accentText : Theme.fg)
                 .lineLimit(1)
             
             Text("\(player.xp) XP")
@@ -640,13 +659,13 @@ struct DuelsView: View {
                     // Rank Number
                     Text("\(rank)")
                         .font(.system(size: 14, weight: .bold, design: .rounded))
-                        .foregroundColor(rank <= 3 ? .yellow : .white.opacity(0.4))
+                        .foregroundColor(rank <= 3 ? .yellow : Theme.fg.opacity(0.4))
                         .frame(width: 24, alignment: .leading)
                     
                     // Avatar
                     ZStack {
                         Circle()
-                            .fill(isMe ? Theme.accent.opacity(0.2) : Color.white.opacity(0.06))
+                            .fill(isMe ? Theme.accent.opacity(0.2) : Theme.fg.opacity(0.06))
                             .frame(width: 40, height: 40)
                         Text(player.avatarEmoji)
                             .font(.title3)
@@ -657,19 +676,19 @@ struct DuelsView: View {
                         HStack(spacing: 6) {
                             Text(player.displayName)
                                 .font(.system(size: 14, weight: .semibold))
-                                .foregroundColor(isMe ? Theme.accent : .white)
+                                .foregroundColor(isMe ? Theme.accentText : Theme.fg)
                                 .lineLimit(1)
                             
                             if isMe {
                                 Text("(Sen)")
                                     .font(.system(size: 10, weight: .bold))
-                                    .foregroundColor(Theme.accent)
+                                    .foregroundColor(Theme.accentText)
                             }
                         }
                         
                         Text("@\(player.username) • \(player.currentLevel)")
                             .font(.caption2)
-                            .foregroundColor(.white.opacity(0.45))
+                            .foregroundColor(Theme.fg.opacity(0.45))
                     }
                     
                     Spacer(minLength: 4)
@@ -682,11 +701,11 @@ struct DuelsView: View {
                 VStack(alignment: .trailing, spacing: 2) {
                     Text("\(player.xp) XP")
                         .font(.system(size: 14, weight: .bold, design: .rounded))
-                        .foregroundColor(.white)
+                        .foregroundColor(Theme.fg)
                     
                     Text("\(player.matchesWon) Win")
                         .font(.system(size: 10))
-                        .foregroundColor(.white.opacity(0.45))
+                        .foregroundColor(Theme.fg.opacity(0.45))
                 }
                 
                 if !isMe && !isFriend {
@@ -702,7 +721,7 @@ struct DuelsView: View {
                         }) {
                             Image(systemName: "person.badge.plus")
                                 .font(.system(size: 14, weight: .bold))
-                                .foregroundColor(.white)
+                                .foregroundColor(Theme.fg)
                                 .frame(width: 34, height: 34)
                                 .background(Circle().fill(Theme.accent.opacity(0.8)))
                         }
@@ -714,7 +733,7 @@ struct DuelsView: View {
         .padding(12)
         .background(
             RoundedRectangle(cornerRadius: 14)
-                .fill(isMe ? Theme.accent.opacity(0.12) : Color.white.opacity(0.04))
+                .fill(isMe ? Theme.accent.opacity(0.12) : Theme.fg.opacity(0.04))
                 .overlay(
                     RoundedRectangle(cornerRadius: 14)
                         .stroke(isMe ? Theme.accent.opacity(0.4) : Color.clear, lineWidth: 1)
@@ -730,27 +749,27 @@ struct DuelsView: View {
             VStack(alignment: .leading, spacing: 10) {
                 Text("YENİ ARKADAŞ EKLE")
                     .font(.caption.bold())
-                    .foregroundColor(Theme.accent)
+                    .foregroundColor(Theme.accentText)
                 
                 HStack(spacing: 10) {
                     TextField("Kullanıcı adı yazın (örn: selin_g)...", text: $searchUsername)
                         .textFieldStyle(.plain)
                         .padding(12)
-                        .background(RoundedRectangle(cornerRadius: 12).fill(Color.white.opacity(0.08)))
-                        .foregroundColor(.white)
+                        .background(RoundedRectangle(cornerRadius: 12).fill(Theme.fg.opacity(0.08)))
+                        .foregroundColor(Theme.fg)
                         .autocapitalization(.none)
                     
                     Button(action: searchUser) {
                         if isSearchingUser {
                             ProgressView()
-                                .tint(.black)
+                                .tint(Theme.onAccent)
                                 .padding(.horizontal, 14)
                                 .padding(.vertical, 12)
                                 .background(RoundedRectangle(cornerRadius: 12).fill(Theme.accent))
                         } else {
                             Text("Ara")
                                 .font(.subheadline.bold())
-                                .foregroundColor(.black)
+                                .foregroundColor(Theme.onAccent)
                                 .padding(.horizontal, 16)
                                 .padding(.vertical, 12)
                                 .background(RoundedRectangle(cornerRadius: 12).fill(Theme.accent))
@@ -771,10 +790,10 @@ struct DuelsView: View {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(found.displayName)
                                 .font(.subheadline.bold())
-                                .foregroundColor(.white)
+                                .foregroundColor(Theme.fg)
                             Text("@\(found.username) • \(found.xp) XP")
                                 .font(.caption2)
-                                .foregroundColor(.white.opacity(0.6))
+                                .foregroundColor(Theme.fg.opacity(0.6))
                         }
                         Spacer()
                         if socialManager.sentRequestReceiverIds.contains(found.id) {
@@ -790,7 +809,7 @@ struct DuelsView: View {
                             }) {
                                 Text("İstek Gönder")
                                     .font(.caption.bold())
-                                    .foregroundColor(.black)
+                                    .foregroundColor(Theme.onAccent)
                                     .padding(.horizontal, 14)
                                     .padding(.vertical, 8)
                                     .background(Capsule().fill(Theme.accent))
@@ -798,11 +817,11 @@ struct DuelsView: View {
                         }
                     }
                     .padding(12)
-                    .background(RoundedRectangle(cornerRadius: 12).fill(Color.white.opacity(0.06)))
+                    .background(RoundedRectangle(cornerRadius: 12).fill(Theme.fg.opacity(0.06)))
                 }
             }
             .padding(18)
-            .background(RoundedRectangle(cornerRadius: 20).fill(Color.white.opacity(0.04)))
+            .background(RoundedRectangle(cornerRadius: 20).fill(Theme.fg.opacity(0.04)))
             .padding(.horizontal, 20)
             
             // Incoming Requests
@@ -819,10 +838,10 @@ struct DuelsView: View {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(req.senderName)
                                     .font(.subheadline.bold())
-                                    .foregroundColor(.white)
+                                    .foregroundColor(Theme.fg)
                                 Text("@\(req.senderUsername)")
                                     .font(.caption2)
-                                    .foregroundColor(.white.opacity(0.6))
+                                    .foregroundColor(Theme.fg.opacity(0.6))
                             }
                             Spacer()
                             
@@ -847,7 +866,7 @@ struct DuelsView: View {
                             }
                         }
                         .padding(12)
-                        .background(RoundedRectangle(cornerRadius: 14).fill(Color.white.opacity(0.05)))
+                        .background(RoundedRectangle(cornerRadius: 14).fill(Theme.fg.opacity(0.05)))
                     }
                 }
                 .padding(.horizontal, 20)
@@ -857,12 +876,12 @@ struct DuelsView: View {
             VStack(alignment: .leading, spacing: 10) {
                 Text("ARKADAŞLARIM (\(socialManager.friends.count))")
                     .font(.caption.bold())
-                    .foregroundColor(.white.opacity(0.5))
+                    .foregroundColor(Theme.fg.opacity(0.5))
                 
                 if socialManager.friends.isEmpty {
                     Text("Henüz listenizde arkadaşınız yok. Yukarıdaki arama kutusundan arkadaşlarınızı davet edebilirsiniz.")
                         .font(.caption)
-                        .foregroundColor(.white.opacity(0.45))
+                        .foregroundColor(Theme.fg.opacity(0.45))
                         .padding(.vertical, 10)
                 } else {
                     ForEach(socialManager.friends) { friend in
@@ -873,10 +892,10 @@ struct DuelsView: View {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(friend.displayName)
                                     .font(.system(size: 14, weight: .semibold))
-                                    .foregroundColor(.white)
+                                    .foregroundColor(Theme.fg)
                                 Text("@\(friend.username) • Seviye: \(friend.currentLevel) • \(friend.xp) XP")
                                     .font(.caption2)
-                                    .foregroundColor(.white.opacity(0.5))
+                                    .foregroundColor(Theme.fg.opacity(0.5))
                             }
                             
                             Spacer()
@@ -897,7 +916,7 @@ struct DuelsView: View {
                             }
                         }
                         .padding(12)
-                        .background(RoundedRectangle(cornerRadius: 14).fill(Color.white.opacity(0.04)))
+                        .background(RoundedRectangle(cornerRadius: 14).fill(Theme.fg.opacity(0.04)))
                     }
                 }
             }
@@ -931,7 +950,7 @@ struct DuelsView: View {
                     
                     Image(systemName: "bolt.fill")
                         .font(.system(size: 28))
-                        .foregroundColor(Theme.accent)
+                        .foregroundColor(Theme.accentText)
                 }
                 .onAppear {
                     withAnimation(.easeInOut(duration: 1.2).repeatForever(autoreverses: false)) {
@@ -943,25 +962,25 @@ struct DuelsView: View {
                 VStack(spacing: 12) {
                     Text(matchManager.roomCode != nil ? "Özel Lobi Bekleniyor" : "1v1 Düello Aranıyor")
                         .font(.title3.bold())
-                        .foregroundColor(.white)
+                        .foregroundColor(Theme.fg)
                     
                     if let code = matchManager.roomCode {
                         VStack(spacing: 6) {
                             Text("ODA KODU")
                                 .font(.caption2.bold())
-                                .foregroundColor(Theme.accent)
+                                .foregroundColor(Theme.accentText)
                             
                             Text(code)
                                 .font(.system(size: 38, weight: .black, design: .monospaced))
-                                .foregroundColor(.white)
+                                .foregroundColor(Theme.fg)
                                 .padding(.horizontal, 24)
                                 .padding(.vertical, 8)
-                                .background(RoundedRectangle(cornerRadius: 14).fill(Color.white.opacity(0.08)))
+                                .background(RoundedRectangle(cornerRadius: 14).fill(Theme.fg.opacity(0.08)))
                                 .overlay(RoundedRectangle(cornerRadius: 14).stroke(Theme.accent.opacity(0.4), lineWidth: 1.5))
                             
                             Text("Arkadaşının bu kodu girmesini bekle...")
                                 .font(.caption)
-                                .foregroundColor(.white.opacity(0.6))
+                                .foregroundColor(Theme.fg.opacity(0.6))
                                 .padding(.top, 4)
                         }
                         .padding(.vertical, 6)
@@ -969,7 +988,7 @@ struct DuelsView: View {
                     
                     Text(matchManager.searchStatus)
                         .font(.subheadline)
-                        .foregroundColor(.white.opacity(0.7))
+                        .foregroundColor(Theme.fg.opacity(0.7))
                         .multilineTextAlignment(.center)
                         .padding(.horizontal, 10)
                     
@@ -986,10 +1005,10 @@ struct DuelsView: View {
                 }) {
                     Text("İptal Et")
                         .font(.headline)
-                        .foregroundColor(.white.opacity(0.8))
+                        .foregroundColor(Theme.fg.opacity(0.8))
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 14)
-                        .background(RoundedRectangle(cornerRadius: 14).fill(Color.white.opacity(0.1)))
+                        .background(RoundedRectangle(cornerRadius: 14).fill(Theme.fg.opacity(0.1)))
                 }
                 .padding(.horizontal, 10)
                 .padding(.bottom, 10)
@@ -997,9 +1016,9 @@ struct DuelsView: View {
             .padding(24)
             .background(
                 RoundedRectangle(cornerRadius: 30)
-                    .fill(Theme.background)
+                    .fill(Theme.surface)
                     .shadow(color: Theme.accent.opacity(0.2), radius: 25)
-                    .overlay(RoundedRectangle(cornerRadius: 30).stroke(Color.white.opacity(0.1), lineWidth: 1))
+                    .overlay(RoundedRectangle(cornerRadius: 30).stroke(Theme.fg.opacity(0.1), lineWidth: 1))
             )
             .padding(.horizontal, 30)
         }
@@ -1016,10 +1035,10 @@ struct DuelsView: View {
                 VStack(spacing: 8) {
                     Text("Özel Odaya Katıl")
                         .font(.title3.bold())
-                        .foregroundColor(.white)
+                        .foregroundColor(Theme.fg)
                     Text("Arkadaşının paylaştığı kodu gir.")
                         .font(.subheadline)
-                        .foregroundColor(.white.opacity(0.6))
+                        .foregroundColor(Theme.fg.opacity(0.6))
                 }
                 .padding(.top, 10)
                 
@@ -1027,8 +1046,8 @@ struct DuelsView: View {
                     .font(.system(size: 32, weight: .black, design: .monospaced))
                     .multilineTextAlignment(.center)
                     .padding(.vertical, 16)
-                    .background(RoundedRectangle(cornerRadius: 14).fill(Color.white.opacity(0.08)))
-                    .foregroundColor(Theme.accent)
+                    .background(RoundedRectangle(cornerRadius: 14).fill(Theme.fg.opacity(0.08)))
+                    .foregroundColor(Theme.accentText)
                     .keyboardType(.numberPad)
                     .padding(.horizontal, 20)
                 
@@ -1050,7 +1069,7 @@ struct DuelsView: View {
                     }) {
                         Text("Odaya Bağlan")
                             .font(.headline.bold())
-                            .foregroundColor(.black)
+                            .foregroundColor(Theme.onAccent)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 16)
                             .background(Theme.accent)
@@ -1063,7 +1082,7 @@ struct DuelsView: View {
                     }) {
                         Text("Vazgeç")
                             .font(.headline)
-                            .foregroundColor(.white.opacity(0.7))
+                            .foregroundColor(Theme.fg.opacity(0.7))
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 14)
                     }
@@ -1074,9 +1093,9 @@ struct DuelsView: View {
             .padding(24)
             .background(
                 RoundedRectangle(cornerRadius: 30)
-                    .fill(Theme.background)
+                    .fill(Theme.surface)
                     .shadow(color: Theme.accent.opacity(0.2), radius: 25)
-                    .overlay(RoundedRectangle(cornerRadius: 30).stroke(Color.white.opacity(0.1), lineWidth: 1))
+                    .overlay(RoundedRectangle(cornerRadius: 30).stroke(Theme.fg.opacity(0.1), lineWidth: 1))
             )
             .padding(.horizontal, 30)
         }
@@ -1098,7 +1117,7 @@ struct DuelsView: View {
                     Button(action: { selectedProfileForViewing = nil }) {
                         Image(systemName: "xmark.circle.fill")
                             .font(.system(size: 24))
-                            .foregroundColor(.white.opacity(0.5))
+                            .foregroundColor(Theme.fg.opacity(0.5))
                     }
                     .padding(.top, -10)
                     .padding(.trailing, -10)
@@ -1116,10 +1135,10 @@ struct DuelsView: View {
                         VStack(spacing: 4) {
                             Text(profile.displayName)
                                 .font(.title3.bold())
-                                .foregroundColor(.white)
+                                .foregroundColor(Theme.fg)
                             Text("@\(profile.username)")
                                 .font(.subheadline)
-                                .foregroundColor(.white.opacity(0.6))
+                                .foregroundColor(Theme.fg.opacity(0.6))
                         }
                     }
                     .frame(maxWidth: .infinity)
@@ -1141,7 +1160,7 @@ struct DuelsView: View {
                     if isFriend {
                         Text("Sizinle arkadaş")
                             .font(.caption.bold())
-                            .foregroundColor(.white.opacity(0.5))
+                            .foregroundColor(Theme.fg.opacity(0.5))
                             .padding(.top, 10)
                     } else if socialManager.sentRequestReceiverIds.contains(profile.id) {
                         HStack(spacing: 8) {
@@ -1164,7 +1183,7 @@ struct DuelsView: View {
                                 Text("Arkadaş Ekle")
                             }
                             .font(.headline.bold())
-                            .foregroundColor(.black)
+                            .foregroundColor(Theme.onAccent)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 14)
                             .background(Theme.accent)
@@ -1177,9 +1196,9 @@ struct DuelsView: View {
             .padding(24)
             .background(
                 RoundedRectangle(cornerRadius: 30)
-                    .fill(Theme.background)
+                    .fill(Theme.surface)
                     .shadow(color: Theme.accent.opacity(0.2), radius: 25)
-                    .overlay(RoundedRectangle(cornerRadius: 30).stroke(Color.white.opacity(0.1), lineWidth: 1))
+                    .overlay(RoundedRectangle(cornerRadius: 30).stroke(Theme.fg.opacity(0.1), lineWidth: 1))
             )
             .padding(.horizontal, 40)
         }
@@ -1231,7 +1250,7 @@ struct ModeRoomView: View {
     
     var body: some View {
         ZStack {
-            Theme.background.ignoresSafeArea()
+            Theme.pageBackground.ignoresSafeArea()
             
             VStack(spacing: 0) {
                 // Header
@@ -1239,14 +1258,14 @@ struct ModeRoomView: View {
                     Button(action: { dismiss() }) {
                         Image(systemName: "chevron.left")
                             .font(.system(size: 20, weight: .bold))
-                            .foregroundColor(.white)
+                            .foregroundColor(Theme.fg)
                             .padding(12)
-                            .background(Circle().fill(Color.white.opacity(0.1)))
+                            .background(Circle().fill(Theme.fg.opacity(0.1)))
                     }
                     Spacer()
                     Text(modeTitle)
                         .font(.title3.bold())
-                        .foregroundColor(.white)
+                        .foregroundColor(Theme.fg)
                     Spacer()
                     Circle()
                         .fill(Color.clear)
@@ -1271,7 +1290,7 @@ struct ModeRoomView: View {
                         
                         Text(modeDescription)
                             .font(.subheadline)
-                            .foregroundColor(.white.opacity(0.7))
+                            .foregroundColor(Theme.fg.opacity(0.7))
                             .multilineTextAlignment(.center)
                             .padding(.horizontal, 30)
                         
@@ -1307,13 +1326,13 @@ struct ModeRoomView: View {
                         VStack(alignment: .leading, spacing: 16) {
                             Text("Arkadaşlarını Davet Et")
                                 .font(.headline.bold())
-                                .foregroundColor(.white)
+                                .foregroundColor(Theme.fg)
                                 .padding(.horizontal, 24)
                             
                             if socialManager.friends.isEmpty {
                                 Text("Henüz arkadaş eklemedin.")
                                     .font(.caption)
-                                    .foregroundColor(.white.opacity(0.5))
+                                    .foregroundColor(Theme.fg.opacity(0.5))
                                     .frame(maxWidth: .infinity, alignment: .center)
                                     .padding(.vertical, 20)
                             } else {
@@ -1322,7 +1341,7 @@ struct ModeRoomView: View {
                                         HStack(spacing: 12) {
                                             ZStack {
                                                 Circle()
-                                                    .fill(Color.white.opacity(0.08))
+                                                    .fill(Theme.fg.opacity(0.08))
                                                     .frame(width: 44, height: 44)
                                                 Text(friend.avatarEmoji)
                                                     .font(.title3)
@@ -1331,7 +1350,7 @@ struct ModeRoomView: View {
                                             VStack(alignment: .leading, spacing: 2) {
                                                 Text(friend.displayName)
                                                     .font(.system(size: 15, weight: .semibold))
-                                                    .foregroundColor(.white)
+                                                    .foregroundColor(Theme.fg)
                                                 Text("\(friend.xp) XP")
                                                     .font(.system(size: 12))
                                                     .foregroundColor(modeColor)
@@ -1348,14 +1367,14 @@ struct ModeRoomView: View {
                                             }) {
                                                 Text("Davet Et")
                                                     .font(.system(size: 12, weight: .bold))
-                                                    .foregroundColor(.white)
+                                                    .foregroundColor(Theme.fg)
                                                     .padding(.horizontal, 16)
                                                     .padding(.vertical, 8)
                                                     .background(Capsule().fill(modeColor))
                                             }
                                         }
                                         .padding(12)
-                                        .background(RoundedRectangle(cornerRadius: 16).fill(Color.white.opacity(0.05)))
+                                        .background(RoundedRectangle(cornerRadius: 16).fill(Theme.fg.opacity(0.05)))
                                     }
                                 }
                                 .padding(.horizontal, 24)
@@ -1382,7 +1401,7 @@ struct ModeRoomView: View {
                         
                         Text(matchManager.searchStatus.isEmpty ? "\(invitedFriendName) bekleniyor..." : matchManager.searchStatus)
                             .font(.headline)
-                            .foregroundColor(.white)
+                            .foregroundColor(Theme.fg)
                             .multilineTextAlignment(.center)
                             .padding(.horizontal, 20)
                         
@@ -1391,10 +1410,10 @@ struct ModeRoomView: View {
                             matchManager.cancelSearch()
                         }
                         .font(.subheadline.bold())
-                        .foregroundColor(.white)
+                        .foregroundColor(Theme.fg)
                         .padding(.horizontal, 24)
                         .padding(.vertical, 10)
-                        .background(Capsule().fill(Color.white.opacity(0.2)))
+                        .background(Capsule().fill(Theme.fg.opacity(0.2)))
                         .padding(.top, 20)
                     }
                 }
@@ -1406,6 +1425,43 @@ struct ModeRoomView: View {
             if show {
                 dismiss()
             }
+        }
+    }
+}
+
+// MARK: - Robot Arena Progress
+
+/// Yapay Zeka Arenası ilerlemesi: her CEFR seviyesinde 30 robot. Bir seviyenin
+/// 30. robotu yenilmeden sonraki seviye açılmaz (A1 bitmeden A2 yok).
+enum RobotArenaProgress {
+    static let maxRobotLevel = 30
+    
+    private static func levelKey(_ level: CEFRLevel) -> String { "robotDuelLevel_\(level.rawValue)" }
+    private static func completedKey(_ level: CEFRLevel) -> String { "robotDuelCompleted_\(level.rawValue)" }
+    
+    /// Açık olan en yüksek robot seviyesi (1...30)
+    static func currentRobotLevel(for level: CEFRLevel) -> Int {
+        let stored = UserDefaults.standard.integer(forKey: levelKey(level))
+        return stored == 0 ? 1 : stored
+    }
+    
+    static func isCompleted(_ level: CEFRLevel) -> Bool {
+        UserDefaults.standard.bool(forKey: completedKey(level))
+    }
+    
+    static func isUnlocked(_ level: CEFRLevel) -> Bool {
+        guard let previous = level.previous else { return true }
+        return isCompleted(previous)
+    }
+    
+    /// Robot yenildiğinde çağrılır: sıradaki robotu açar, 30. robotta seviyeyi tamamlar
+    static func recordWin(level: CEFRLevel, robotLevel: Int) {
+        let current = currentRobotLevel(for: level)
+        guard robotLevel == current else { return }
+        if robotLevel >= maxRobotLevel {
+            UserDefaults.standard.set(true, forKey: completedKey(level))
+        } else {
+            UserDefaults.standard.set(current + 1, forKey: levelKey(level))
         }
     }
 }

@@ -28,7 +28,7 @@ struct LoginView: View {
                         }) {
                             Image(systemName: "xmark.circle.fill")
                                 .font(.title2)
-                                .foregroundColor(.white.opacity(0.4))
+                                .foregroundColor(Theme.fg.opacity(0.4))
                         }
                     }
                     .padding(.horizontal, 24)
@@ -44,16 +44,16 @@ struct LoginView: View {
                             
                             Image(systemName: "bolt.shield.fill")
                                 .font(.system(size: 34))
-                                .foregroundColor(Theme.accent)
+                                .foregroundColor(Theme.accentText)
                         }
 
                         Text("Wordlet")
                             .font(.system(size: 32, weight: .bold, design: .rounded))
-                            .foregroundColor(.white)
+                            .foregroundColor(Theme.fg)
 
                         Text(isRegistering ? "Yeni Bir Hesap Oluştur" : "Kelime Düellolarına Katıl")
                             .font(.subheadline)
-                            .foregroundColor(.white.opacity(0.6))
+                            .foregroundColor(Theme.fg.opacity(0.6))
                     }
                     .padding(.top, 10)
 
@@ -92,7 +92,7 @@ struct LoginView: View {
                             .cornerRadius(14)
                             .overlay(
                                 RoundedRectangle(cornerRadius: 14)
-                                    .stroke(Color.white.opacity(0.2), lineWidth: 1)
+                                    .stroke(Theme.fg.opacity(0.2), lineWidth: 1)
                             )
                         }
                     }
@@ -100,12 +100,12 @@ struct LoginView: View {
 
                     // Divider: "veya e-posta ile"
                     HStack {
-                        Rectangle().fill(Color.white.opacity(0.12)).frame(height: 1)
+                        Rectangle().fill(Theme.fg.opacity(0.12)).frame(height: 1)
                         Text("veya e-posta ile")
                             .font(.caption)
-                            .foregroundColor(.white.opacity(0.4))
+                            .foregroundColor(Theme.fg.opacity(0.4))
                             .padding(.horizontal, 8)
-                        Rectangle().fill(Color.white.opacity(0.12)).frame(height: 1)
+                        Rectangle().fill(Theme.fg.opacity(0.12)).frame(height: 1)
                     }
                     .padding(.horizontal, 24)
 
@@ -139,7 +139,7 @@ struct LoginView: View {
                                 } else {
                                     Text(isRegistering ? "Kayıt Ol" : "E-posta ile Giriş")
                                         .font(.headline.bold())
-                                        .foregroundColor(.black)
+                                        .foregroundColor(Theme.onAccent)
                                 }
                             }
                             .frame(maxWidth: .infinity)
@@ -151,7 +151,7 @@ struct LoginView: View {
                         .disabled(isLoading)
                     }
                     .padding(20)
-                    .background(RoundedRectangle(cornerRadius: 20).fill(Color.white.opacity(0.05)))
+                    .background(RoundedRectangle(cornerRadius: 20).fill(Theme.fg.opacity(0.05)))
                     .padding(.horizontal, 24)
 
                     // Toggle register / login
@@ -163,10 +163,10 @@ struct LoginView: View {
                     }) {
                         HStack(spacing: 4) {
                             Text(isRegistering ? "Zaten hesabın var mı?" : "Hesabın yok mu?")
-                                .foregroundColor(.white.opacity(0.6))
+                                .foregroundColor(Theme.fg.opacity(0.6))
                             Text(isRegistering ? "Giriş Yap" : "Kayıt Ol")
                                 .fontWeight(.bold)
-                                .foregroundColor(Theme.accent)
+                                .foregroundColor(Theme.accentText)
                         }
                         .font(.footnote)
                     }
@@ -178,7 +178,7 @@ struct LoginView: View {
                     }) {
                         Text("Kayıt Olmadan Misafir Olarak Oyna")
                             .font(.caption.bold())
-                            .foregroundColor(.white.opacity(0.45))
+                            .foregroundColor(Theme.fg.opacity(0.45))
                             .underline()
                     }
                     .padding(.top, 4)
@@ -197,8 +197,8 @@ struct LoginView: View {
                              autoCapitalize: Bool = true) -> some View {
         TextField(placeholder, text: text)
             .padding(14)
-            .background(RoundedRectangle(cornerRadius: 12).fill(Color.white.opacity(0.08)))
-            .foregroundColor(.white)
+            .background(RoundedRectangle(cornerRadius: 12).fill(Theme.fg.opacity(0.08)))
+            .foregroundColor(Theme.fg)
             .autocapitalization(autoCapitalize ? .words : .none)
             .keyboardType(keyboard)
     }
@@ -207,8 +207,8 @@ struct LoginView: View {
     private func styledSecureField(_ placeholder: String, text: Binding<String>) -> some View {
         SecureField(placeholder, text: text)
             .padding(14)
-            .background(RoundedRectangle(cornerRadius: 12).fill(Color.white.opacity(0.08)))
-            .foregroundColor(.white)
+            .background(RoundedRectangle(cornerRadius: 12).fill(Theme.fg.opacity(0.08)))
+            .foregroundColor(Theme.fg)
     }
 
     private func handleGoogleSignIn() {

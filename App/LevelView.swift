@@ -17,7 +17,7 @@ struct LevelView: View {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Seviyelerim")
                         .font(.system(size: 34, weight: .bold, design: .rounded))
-                        .foregroundColor(.white)
+                        .foregroundColor(Theme.fg)
                     Text("Sınavı geç, yeni kelimeleri aç!")
                         .font(.subheadline)
                         .foregroundColor(Theme.textSecondary)
@@ -153,31 +153,31 @@ private struct LevelCard: View {
                     HStack(spacing: 8) {
                         Text(level.rawValue)
                             .font(.system(size: 22, weight: .black, design: .rounded))
-                            .foregroundColor(.white)
+                            .foregroundColor(Theme.fg)
                         
                         // Stars
                         HStack(spacing: 2) {
                             ForEach(1...3, id: \.self) { star in
                                 Image(systemName: ProgressManager.shared.progress.stars(for: level) >= star ? "star.fill" : "star")
                                     .font(.system(size: 10))
-                                    .foregroundColor(ProgressManager.shared.progress.stars(for: level) >= star ? .yellow : .white.opacity(0.2))
+                                    .foregroundColor(ProgressManager.shared.progress.stars(for: level) >= star ? .yellow : Theme.fg.opacity(0.2))
                             }
                         }
                         
                         Text(level.description)
                             .font(.subheadline.weight(.medium))
-                            .foregroundColor(.white.opacity(0.7))
+                            .foregroundColor(Theme.fg.opacity(0.7))
                         
                         Button(action: onTapInfo) {
                             Image(systemName: "questionmark.circle.fill")
                                 .font(.subheadline)
-                                .foregroundColor(.white.opacity(0.45))
+                                .foregroundColor(Theme.fg.opacity(0.45))
                         }
                         .buttonStyle(.plain)
                     }
                     Text("\(wordCount) kelime")
                         .font(.caption)
-                        .foregroundColor(.white.opacity(0.5))
+                        .foregroundColor(Theme.fg.opacity(0.5))
                 }
 
                 Spacer()
@@ -185,11 +185,11 @@ private struct LevelCard: View {
                 // Status icon
                 ZStack {
                     Circle()
-                        .fill(isUnlocked ? badgeColor.opacity(0.2) : Color.white.opacity(0.07))
+                        .fill(isUnlocked ? badgeColor.opacity(0.2) : Theme.fg.opacity(0.07))
                         .frame(width: 44, height: 44)
                     Image(systemName: isUnlocked ? "lock.open.fill" : "lock.fill")
                         .font(.system(size: 18, weight: .semibold))
-                        .foregroundColor(isUnlocked ? badgeColor : .white.opacity(0.4))
+                        .foregroundColor(isUnlocked ? badgeColor : Theme.fg.opacity(0.4))
                 }
             }
 
@@ -199,7 +199,7 @@ private struct LevelCard: View {
                     HStack {
                         Text("Görülen: \(seenCount)/\(wordCount)")
                             .font(.caption)
-                            .foregroundColor(.white.opacity(0.6))
+                            .foregroundColor(Theme.fg.opacity(0.6))
                         Spacer()
                         Text("\(Int(progress * 100))%")
                             .font(.caption.weight(.semibold))
@@ -209,7 +209,7 @@ private struct LevelCard: View {
                     GeometryReader { geo in
                         ZStack(alignment: .leading) {
                             RoundedRectangle(cornerRadius: 3)
-                                .fill(Color.white.opacity(0.1))
+                                .fill(Theme.fg.opacity(0.1))
                                 .frame(height: 6)
                             RoundedRectangle(cornerRadius: 3)
                                 .fill(
@@ -227,10 +227,10 @@ private struct LevelCard: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Günlük Testler")
                             .font(.system(size: 10))
-                            .foregroundColor(.white.opacity(0.5))
+                            .foregroundColor(Theme.fg.opacity(0.5))
                         Text("\(dailyTestCount) tamamlandı")
                             .font(.system(size: 12, weight: .bold))
-                            .foregroundColor(.white)
+                            .foregroundColor(Theme.fg)
                     }
                     
                     Spacer()
@@ -238,14 +238,14 @@ private struct LevelCard: View {
                     VStack(alignment: .trailing, spacing: 2) {
                         Text("Bildiğin Kelimeler")
                             .font(.system(size: 10))
-                            .foregroundColor(.white.opacity(0.5))
+                            .foregroundColor(Theme.fg.opacity(0.5))
                         Text("\(knownCount) kelime")
                             .font(.system(size: 12, weight: .bold))
-                            .foregroundColor(.white)
+                            .foregroundColor(Theme.fg)
                     }
                 }
                 .padding(10)
-                .background(RoundedRectangle(cornerRadius: 10).fill(Color.white.opacity(0.04)))
+                .background(RoundedRectangle(cornerRadius: 10).fill(Theme.fg.opacity(0.04)))
                 .padding(.top, 4)
 
                 // Current level badge
@@ -271,7 +271,7 @@ private struct LevelCard: View {
                                 .foregroundColor(Theme.correct)
                             Text("Geçmek için en az %70 almalısın.")
                                 .font(.caption)
-                                .foregroundColor(.white.opacity(0.7))
+                                .foregroundColor(Theme.fg.opacity(0.7))
                         }
                         Spacer()
                         Button(action: onTakTest) {
@@ -302,27 +302,29 @@ private struct LevelCard: View {
                                 Text("Sınav Hakkı İçin Gereksinim")
                                     .font(.caption.weight(.semibold))
                             }
-                            .foregroundColor(.white.opacity(0.6))
+                            .foregroundColor(Theme.fg.opacity(0.6))
                             
-                            // Gereksinim: Tüm Kelimeleri Öğrenmek
+                            // Gereksinim: önceki seviyenin %80'i öğrenilmiş olmalı (FSRS: tekrarda, ≥7 gün)
+                            let mastered = ProgressManager.shared.masteredCount(for: sourceLevel)
+                            let required = max(ProgressManager.shared.requiredMasteredCount(for: sourceLevel), 1)
                             VStack(alignment: .leading, spacing: 4) {
                                 HStack {
-                                    Text("\(sourceLevel.rawValue) Tüm Kelimeler")
+                                    Text("\(sourceLevel.rawValue) kelimelerinin %\(Int(ProgressManager.masteryRatio * 100))'i öğrenildi")
                                         .font(.caption2)
                                     Spacer()
-                                    Text("\(min(seenCount, wordCount))/\(wordCount)")
+                                    Text("\(min(mastered, required))/\(required)")
                                         .font(.caption2.bold())
                                 }
                                 GeometryReader { geo in
                                     ZStack(alignment: .leading) {
-                                        Capsule().fill(Color.white.opacity(0.1))
-                                        Capsule().fill(seenCount >= wordCount ? Theme.correct : Theme.accent)
-                                            .frame(width: geo.size.width * CGFloat(min(seenCount, wordCount)) / CGFloat(wordCount))
+                                        Capsule().fill(Theme.fg.opacity(0.1))
+                                        Capsule().fill(mastered >= required ? Theme.correct : Theme.accent)
+                                            .frame(width: geo.size.width * CGFloat(min(mastered, required)) / CGFloat(required))
                                     }
                                 }
                                 .frame(height: 4)
                             }
-                            .foregroundColor(.white.opacity(0.7))
+                            .foregroundColor(Theme.fg.opacity(0.7))
                         }
                         .padding(12)
                         .background(RoundedRectangle(cornerRadius: 12).fill(Color.black.opacity(0.15)))
@@ -337,7 +339,7 @@ private struct LevelCard: View {
                 .overlay(
                     RoundedRectangle(cornerRadius: 20)
                         .stroke(
-                            isCurrent ? badgeColor.opacity(0.6) : Color.white.opacity(0.08),
+                            isCurrent ? badgeColor.opacity(0.6) : Theme.fg.opacity(0.08),
                             lineWidth: isCurrent ? 2 : 1
                         )
                 )
@@ -359,7 +361,7 @@ private struct ScoreChip: View {
         VStack(spacing: 2) {
             Text("%\(score)")
                 .font(.system(size: 14, weight: .bold))
-                .foregroundColor(.white)
+                .foregroundColor(Theme.fg)
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 8)
@@ -382,10 +384,10 @@ private struct UnlockBanner: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text("\(level.rawValue) Açıldı!")
                     .font(.headline)
-                    .foregroundColor(.white)
+                    .foregroundColor(Theme.fg)
                 Text("Artık \(level.description) kelimelerini görebilirsin.")
                     .font(.caption)
-                    .foregroundColor(.white.opacity(0.8))
+                    .foregroundColor(Theme.fg.opacity(0.8))
             }
             Spacer()
         }
@@ -439,16 +441,16 @@ struct LevelInfoView: View {
                 VStack(spacing: 6) {
                     Text("\(level.rawValue) Seviye Rehberi")
                         .font(.system(size: 26, weight: .bold, design: .rounded))
-                        .foregroundColor(.white)
+                        .foregroundColor(Theme.fg)
                     
                     if let next = level.next {
                         Text("\(next.rawValue) Seviyesine Geçiş Koşulları")
                             .font(.subheadline)
-                            .foregroundColor(.white.opacity(0.6))
+                            .foregroundColor(Theme.fg.opacity(0.6))
                     } else {
                         Text("Son Seviyedesiniz")
                             .font(.subheadline)
-                            .foregroundColor(.white.opacity(0.6))
+                            .foregroundColor(Theme.fg.opacity(0.6))
                     }
                 }
                 
@@ -461,16 +463,16 @@ struct LevelInfoView: View {
                             icon: "checkmark.circle.fill",
                             title: "Kelimeleri Öğren",
                             value: "\(levelWordsCount) Kelime",
-                            desc: "Sınavı açmak için bu seviyedeki tüm kelimeleri öğrenmelisiniz."
+                            desc: "Sınavı açmak için bu seviyedeki kelimelerin %\(Int(ProgressManager.masteryRatio * 100))'ini öğrenmelisin. Bir kelime, tekrarlarda en az bir hafta hatırlanınca öğrenilmiş sayılır."
                         )
                         
-                        Divider().background(Color.white.opacity(0.1))
+                        Divider().background(Theme.fg.opacity(0.1))
                         
                         infoRow(
                             icon: "pencil.and.list.clipboard",
                             title: "Seviye Atlama Sınavı",
                             value: "Baraj Sınavı",
-                            desc: "Tüm kelimeler öğrenildikten sonra açılan baraj sınavından en az %70 başarı elde etmelisiniz."
+                            desc: "Kelimeler öğrenildikten sonra açılan baraj sınavından en az %70 başarı elde etmelisin."
                         )
                     } else {
                         infoRow(
@@ -503,7 +505,6 @@ struct LevelInfoView: View {
                 .padding(.bottom, 34)
             }
         }
-        .preferredColorScheme(.dark)
     }
     
     @ViewBuilder
@@ -519,7 +520,7 @@ struct LevelInfoView: View {
                 HStack {
                     Text(title)
                         .font(.system(size: 15, weight: .semibold))
-                        .foregroundColor(.white)
+                        .foregroundColor(Theme.fg)
                     Spacer()
                     Text(value)
                         .font(.system(size: 15, weight: .bold))
@@ -528,7 +529,7 @@ struct LevelInfoView: View {
                 
                 Text(desc)
                     .font(.system(size: 12.5))
-                    .foregroundColor(.white.opacity(0.55))
+                    .foregroundColor(Theme.fg.opacity(0.55))
                     .fixedSize(horizontal: false, vertical: true)
             }
         }

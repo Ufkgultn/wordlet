@@ -16,13 +16,13 @@ struct ScoreUpdatePayload: Codable {
 }
 
 struct MatchFinishedPayload: Codable {
-    let winnerId: String
+    let userId: String
 }
 
 @MainActor
 public class MatchManager: ObservableObject {
     public static let shared = MatchManager()
-    
+
     // Matchmaking State
     @Published public var isSearching: Bool = false
     @Published public var searchStatus: String = "Lobi oluşturuluyor..."
@@ -33,22 +33,26 @@ public class MatchManager: ObservableObject {
     @Published public var opponentLiveScore: Int = 0
     @Published public var matchFinishedEventReceived: Bool = false
     @Published public var errorMessage: String? = nil
-    
+
     private let client = SupabaseManager.shared.client
     private var realtimeChannel: RealtimeChannelV2? = nil
+    private var channelListenerTasks: [Task<Void, Never>] = []
     private var lobbyPollingTask: Task<Void, Never>? = nil
-    
+
+    /// Sunucu 3 dakikadan eski rastgele lobileri kapatıyor; istemci ondan önce vazgeçer.
+    private let randomLobbyTimeout: TimeInterval = 150
+
     private init() {}
-    
+
     // MARK: - 1. Random Matchmaking (100% Real Online Network Match)
-    
+
     public func startRandomMatchmaking(level: CEFRLevel = ProgressManager.shared.progress.currentLevel, gameMode: Int = UserDefaults.standard.integer(forKey: "selectedMinigame")) async {
         guard !isSearching else { return }
         guard let myProfile = SocialManager.shared.myProfile else {
             self.errorMessage = "Maça başlamak için profil yüklenemedi. Lütfen giriş yapın."
             return
         }
-        
+
         isSearching = true
         searchStatus = "Çevrimiçi açık maç aranıyor..."
         roomCode = nil
@@ -57,282 +61,270 @@ public class MatchManager: ObservableObject {
         opponentLiveScore = 0
         matchFinishedEventReceived = false
         errorMessage = nil
-        
+
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-        
+
         do {
-            // 1. Search database for an existing waiting match at this level
-            let openMatches: [DuelMatch] = try await client
-                .from("matches")
-                .select()
-                .eq("status", value: "waiting")
-                .eq("mode", value: "random_\(gameMode)")
-                .eq("level", value: level.rawValue)
-                .neq("player1_id", value: myProfile.id)
-                .limit(1)
+            // 1. Atomik olarak bekleyen bir maça katılmayı dene (sunucu tarafında kilitli)
+            let joinedMatches: [DuelMatch] = try await client
+                .rpc("join_random_match", params: ["p_mode": "random_\(gameMode)", "p_level": level.rawValue])
                 .execute()
                 .value
-            
-            if let availableMatch = openMatches.first {
-                // JOIN EXISTING MATCH!
+
+            if let joined = joinedMatches.first {
                 searchStatus = "Rakip bulundu! Maça bağlanılıyor..."
-                
-                try await client
-                    .from("matches")
-                    .update([
-                        "player2_id": myProfile.id,
-                        "player2_name": myProfile.displayName,
-                        "player2_avatar": myProfile.avatarEmoji,
-                        "status": "in_progress"
-                    ])
-                    .eq("id", value: availableMatch.id)
-                    .execute()
-                
-                var joined = availableMatch
-                joined.player2Id = myProfile.id
-                joined.player2Name = myProfile.displayName
-                joined.player2Avatar = myProfile.avatarEmoji
-                joined.status = "in_progress"
-                
-                self.activeMatch = joined
-                self.currentOpponent = PublicProfile(
-                    id: joined.player1Id,
-                    username: "rakip",
-                    displayName: joined.player1Name,
-                    currentLevel: joined.level,
-                    xp: 0,
-                    avatarEmoji: joined.player1Avatar
-                )
-                
-                // Connect to real-time sync channel
-                await connectToMatchChannel(matchId: joined.id)
-                
-                // Broadcast that we joined
-                try? await realtimeChannel?.broadcast(
-                    event: "player_joined",
-                    message: PlayerJoinedPayload(
-                        player2Id: myProfile.id,
-                        player2Name: myProfile.displayName,
-                        player2Avatar: myProfile.avatarEmoji
-                    )
-                )
-                
+                await enterJoinedMatch(joined, as: myProfile)
                 UINotificationFeedbackGenerator().notificationOccurred(.success)
-                self.isSearching = false
-                self.showBattleArena = true
                 return
             }
-            
+
             // 2. NO EXISTING MATCH: CREATE A WAITING MATCH & LOBBY
             let generatedCode = String(Int.random(in: 1000...9999))
             self.roomCode = generatedCode
             self.searchStatus = "Lobi açıldı (#\(generatedCode)). Çevrimiçi bir oyuncunun katılması bekleniyor..."
-            
-            // Pick random words for this match
-            let words = WordManager.shared.words(for: level).shuffled().prefix(50).map { $0.id }
-            
-            let newMatch = DuelMatch(
-                id: UUID().uuidString,
+
+            let newMatch = try await insertMatch(
                 roomCode: generatedCode,
-                player1Id: myProfile.id,
                 player2Id: nil,
-                player1Name: myProfile.displayName,
-                player2Name: nil,
-                player1Avatar: myProfile.avatarEmoji,
-                player2Avatar: nil,
-                player1Score: 0,
-                player2Score: 0,
-                status: "waiting",
-                winnerId: nil,
                 mode: "random_\(gameMode)",
-                level: level.rawValue,
-                wordIds: Array(words)
+                level: level,
+                me: myProfile
             )
-            
-            try await client
-                .from("matches")
-                .insert(newMatch)
-                .execute()
-            
+
             self.activeMatch = newMatch
-            
-            // Connect to Realtime channel
             await connectToMatchChannel(matchId: newMatch.id)
-            
-            // Start waiting for player 2 (listen via WebSocket + polling backup)
-            startLobbyPolling(matchId: newMatch.id)
-            
+            startLobbyPolling(matchId: newMatch.id, timeout: randomLobbyTimeout)
+
         } catch {
             print("Matchmaking error: \(error)")
             self.errorMessage = "Eşleşme sunucusuna bağlanılamadı: \(error.localizedDescription)"
             self.isSearching = false
         }
     }
-    
+
     // MARK: - 2. Room Code Real-Time Duel (Oda Kodu ile Canlı Maç)
-    
+
     public func createPrivateRoom(level: CEFRLevel = ProgressManager.shared.progress.currentLevel, gameMode: Int = UserDefaults.standard.integer(forKey: "selectedMinigame")) async {
         guard let myProfile = SocialManager.shared.myProfile else { return }
-        
+
         isSearching = true
         let generatedCode = String(Int.random(in: 1000...9999))
         self.roomCode = generatedCode
         self.searchStatus = "Oda Kodu: \(generatedCode)\nArkadaşının bu kodu girmesini bekle..."
-        
-        let words = WordManager.shared.words(for: level).shuffled().prefix(50).map { $0.id }
-        let match = DuelMatch(
-            id: UUID().uuidString,
-            roomCode: generatedCode,
-            player1Id: myProfile.id,
-            player1Name: myProfile.displayName,
-            player1Avatar: myProfile.avatarEmoji,
-            status: "waiting",
-            mode: "room_\(gameMode)",
-            level: level.rawValue,
-            wordIds: Array(words)
-        )
-        
+
         do {
-            try await client.from("matches").insert(match).execute()
+            let match = try await insertMatch(
+                roomCode: generatedCode,
+                player2Id: nil,
+                mode: "room_\(gameMode)",
+                level: level,
+                me: myProfile
+            )
             self.activeMatch = match
             await connectToMatchChannel(matchId: match.id)
-            startLobbyPolling(matchId: match.id)
+            startLobbyPolling(matchId: match.id, timeout: nil)
         } catch {
             self.errorMessage = "Oda açılamadı: \(error.localizedDescription)"
             self.isSearching = false
         }
     }
-    
+
     public func joinPrivateRoom(code: String) async {
         guard let myProfile = SocialManager.shared.myProfile else { return }
         let cleanCode = code.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !cleanCode.isEmpty else { return }
-        
+
         do {
             let matches: [DuelMatch] = try await client
-                .from("matches")
-                .select()
-                .eq("room_code", value: cleanCode)
-                .eq("status", value: "waiting")
-                .limit(1)
+                .rpc("join_room_match", params: ["p_code": cleanCode])
                 .execute()
                 .value
-            
-            guard let match = matches.first else {
+
+            guard let joined = matches.first else {
                 self.errorMessage = "Bu koda ait açık bir lobi bulunamadı."
                 return
             }
-            
-            // Join room
-            try await client
-                .from("matches")
-                .update([
-                    "player2_id": myProfile.id,
-                    "player2_name": myProfile.displayName,
-                    "player2_avatar": myProfile.avatarEmoji,
-                    "status": "in_progress"
-                ])
-                .eq("id", value: match.id)
-                .execute()
-            
-            var joined = match
-            joined.player2Id = myProfile.id
-            joined.player2Name = myProfile.displayName
-            joined.player2Avatar = myProfile.avatarEmoji
-            joined.status = "in_progress"
-            
-            self.activeMatch = joined
-            self.currentOpponent = PublicProfile(
-                id: joined.player1Id,
-                username: "rakip",
-                displayName: joined.player1Name,
-                currentLevel: joined.level,
-                xp: 0,
-                avatarEmoji: joined.player1Avatar
-            )
-            
-            await connectToMatchChannel(matchId: joined.id)
-            
-            try? await realtimeChannel?.broadcast(
-                event: "player_joined",
-                message: PlayerJoinedPayload(
-                    player2Id: myProfile.id,
-                    player2Name: myProfile.displayName,
-                    player2Avatar: myProfile.avatarEmoji
-                )
-            )
-            
-            self.isSearching = false
-            self.showBattleArena = true
+
+            await enterJoinedMatch(joined, as: myProfile)
         } catch {
             self.errorMessage = "Odaya katılırken hata oluştu: \(error.localizedDescription)"
         }
     }
-    
-    // MARK: - 3. Realtime Channel & Live Sync
-    
+
+    // MARK: - 3. Direct Friend Invites
+
+    public func sendDirectInvite(to friend: PublicProfile, gameMode: Int, level: CEFRLevel = ProgressManager.shared.progress.currentLevel) async {
+        guard let myProfile = SocialManager.shared.myProfile else { return }
+
+        isSearching = true
+        self.searchStatus = "\(friend.displayName) davet ediliyor..."
+
+        do {
+            let match = try await insertMatch(
+                roomCode: nil, // No code needed for direct invites
+                player2Id: friend.id,
+                mode: "friend_\(gameMode)",
+                level: level,
+                me: myProfile
+            )
+            self.activeMatch = match
+            await connectToMatchChannel(matchId: match.id)
+            startLobbyPolling(matchId: match.id, timeout: nil)
+        } catch {
+            self.errorMessage = "Davet gönderilemedi: \(error.localizedDescription)"
+            self.isSearching = false
+        }
+    }
+
+    public func acceptDirectInvite(match: DuelMatch) async {
+        guard let myProfile = SocialManager.shared.myProfile else { return }
+
+        do {
+            let matches: [DuelMatch] = try await client
+                .rpc("accept_match_invite", params: ["p_match_id": match.id])
+                .execute()
+                .value
+
+            guard let joined = matches.first else {
+                self.errorMessage = "Bu davet artık geçerli değil."
+                return
+            }
+
+            await enterJoinedMatch(joined, as: myProfile)
+        } catch {
+            self.errorMessage = "Davet kabul edilemedi: \(error.localizedDescription)"
+        }
+    }
+
+    public func declineDirectInvite(matchId: String) async {
+        _ = try? await client
+            .rpc("cancel_match", params: ["p_match_id": matchId])
+            .execute()
+    }
+
+    // MARK: - Shared Match Helpers
+
+    private func insertMatch(roomCode: String?, player2Id: String?, mode: String, level: CEFRLevel, me: PublicProfile) async throws -> DuelMatch {
+        let words = WordManager.shared.words(for: level).shuffled().prefix(50).map { $0.id }
+        let draft = DuelMatch(
+            id: UUID().uuidString,
+            roomCode: roomCode,
+            player1Id: me.id,
+            player2Id: player2Id,
+            player1Name: me.displayName,
+            player1Avatar: me.avatarEmoji,
+            status: "waiting",
+            mode: mode,
+            level: level.rawValue,
+            wordIds: Array(words)
+        )
+        // Sunucu trigger'ı isim/skor/durum alanlarını kendisi doldurur; dönen satırı kullan
+        return try await client
+            .from("matches")
+            .insert(draft)
+            .select()
+            .single()
+            .execute()
+            .value
+    }
+
+    private func enterJoinedMatch(_ joined: DuelMatch, as me: PublicProfile) async {
+        self.activeMatch = joined
+        self.currentOpponent = PublicProfile(
+            id: joined.player1Id,
+            username: "rakip",
+            displayName: joined.player1Name,
+            currentLevel: joined.level,
+            xp: 0,
+            avatarEmoji: joined.player1Avatar
+        )
+
+        await connectToMatchChannel(matchId: joined.id)
+
+        try? await realtimeChannel?.broadcast(
+            event: "player_joined",
+            message: PlayerJoinedPayload(
+                player2Id: me.id,
+                player2Name: me.displayName,
+                player2Avatar: me.avatarEmoji
+            )
+        )
+
+        self.isSearching = false
+        self.showBattleArena = true
+    }
+
+    // MARK: - 4. Realtime Channel & Live Sync
+
     private func connectToMatchChannel(matchId: String) async {
+        tearDownChannel()
+
         let channel = client.realtimeV2.channel("match_\(matchId)")
         self.realtimeChannel = channel
-        
+
+        let joinedStream = channel.broadcastStream(event: "player_joined")
+        let scoreStream = channel.broadcastStream(event: "score_update")
+        let finishedStream = channel.broadcastStream(event: "match_finished")
+
         await channel.subscribe()
-        
+
         // Listen for player joined broadcast
-        Task {
-            for await message in channel.broadcastStream(event: "player_joined") {
+        channelListenerTasks.append(Task { [weak self] in
+            for await message in joinedStream {
                 let payload = try? message.decode(as: PlayerJoinedPayload.self)
                 let name = payload?.player2Name ?? message["player2Name"]?.stringValue
                 let avatar = payload?.player2Avatar ?? message["player2Avatar"]?.stringValue
                 let id = payload?.player2Id ?? message["player2Id"]?.stringValue
-                
-                if let name, let avatar, let id {
-                    await MainActor.run {
-                        self.currentOpponent = PublicProfile(
-                            id: id,
-                            username: "rakip",
-                            displayName: name,
-                            currentLevel: self.activeMatch?.level ?? "A1",
-                            xp: 0,
-                            avatarEmoji: avatar
-                        )
-                        self.activeMatch?.player2Id = id
-                        self.activeMatch?.player2Name = name
-                        self.activeMatch?.player2Avatar = avatar
-                        self.activeMatch?.status = "in_progress"
-                        self.lobbyPollingTask?.cancel()
-                        self.isSearching = false
-                        self.showBattleArena = true
-                    }
-                }
+
+                guard let self, let name, let avatar, let id else { continue }
+                self.currentOpponent = PublicProfile(
+                    id: id,
+                    username: "rakip",
+                    displayName: name,
+                    currentLevel: self.activeMatch?.level ?? "A1",
+                    xp: 0,
+                    avatarEmoji: avatar
+                )
+                self.activeMatch?.player2Id = id
+                self.activeMatch?.player2Name = name
+                self.activeMatch?.player2Avatar = avatar
+                self.activeMatch?.status = "in_progress"
+                self.lobbyPollingTask?.cancel()
+                self.isSearching = false
+                self.showBattleArena = true
             }
-        }
-        
+        })
+
         // Listen for live score updates from opponent
-        Task {
-            for await message in channel.broadcastStream(event: "score_update") {
+        channelListenerTasks.append(Task { [weak self] in
+            for await message in scoreStream {
                 let payload = try? message.decode(as: ScoreUpdatePayload.self)
                 let senderId = payload?.userId ?? message["userId"]?.stringValue
                 let score = payload?.score ?? message["score"]?.intValue
-                let myId = SocialManager.shared.myProfile?.id
-                
-                if let senderId, let score, senderId != myId {
-                    await MainActor.run {
-                        self.opponentLiveScore = score
-                    }
-                }
+
+                guard let self, let senderId, let score,
+                      senderId != SocialManager.shared.myProfile?.id else { continue }
+                self.opponentLiveScore = score
             }
-        }
-        
+        })
+
         // Listen for game finished event
-        Task {
-            for await _ in channel.broadcastStream(event: "match_finished") {
-                await MainActor.run {
-                    self.matchFinishedEventReceived = true
-                }
+        channelListenerTasks.append(Task { [weak self] in
+            for await _ in finishedStream {
+                self?.matchFinishedEventReceived = true
             }
-        }
+        })
     }
-    
+
+    private func tearDownChannel() {
+        channelListenerTasks.forEach { $0.cancel() }
+        channelListenerTasks.removeAll()
+        if let channel = realtimeChannel {
+            Task { await client.realtimeV2.removeChannel(channel) }
+        }
+        realtimeChannel = nil
+    }
+
     public func sendLiveScore(score: Int) async {
         guard let myId = SocialManager.shared.myProfile?.id else { return }
         try? await realtimeChannel?.broadcast(
@@ -340,31 +332,61 @@ public class MatchManager: ObservableObject {
             message: ScoreUpdatePayload(userId: myId, score: score)
         )
     }
-    
-    public func sendMatchFinished(winnerId: String) async {
-        try? await realtimeChannel?.broadcast(
-            event: "match_finished",
-            message: MatchFinishedPayload(winnerId: winnerId)
-        )
-        
-        if let match = activeMatch {
-            _ = try? await client
-                .from("matches")
-                .update(["status": "completed", "winner_id": winnerId])
-                .eq("id", value: match.id)
-                .execute()
+
+    /// Oyun bitince çağrılır (resetMatch'ten ÖNCE). Skoru sunucuya gönderir; kazananı ve XP'yi
+    /// sunucu belirler. Rakip skor göndermeden ayrılırsa 20 sn sonra maç sunucuda kapatılır.
+    public func finishMatch(score: Int) {
+        guard let matchId = activeMatch?.id,
+              let myId = SocialManager.shared.myProfile?.id else { return }
+
+        // Kanalı bu görev sahiplensin ki resetMatch broadcast'i yarıda kesmesin
+        let channel = realtimeChannel
+        channelListenerTasks.forEach { $0.cancel() }
+        channelListenerTasks.removeAll()
+        realtimeChannel = nil
+
+        let client = self.client
+        Task {
+            try? await channel?.broadcast(event: "match_finished", message: MatchFinishedPayload(userId: myId))
+            if let channel { await client.realtimeV2.removeChannel(channel) }
+
+            do {
+                var result: [DuelMatch] = try await client
+                    .rpc("submit_match_score", params: SubmitScoreParams(p_match_id: matchId, p_score: score))
+                    .execute()
+                    .value
+
+                if result.first?.status == "in_progress" {
+                    try? await Task.sleep(nanoseconds: 22_000_000_000)
+                    result = try await client
+                        .rpc("finalize_match", params: ["p_match_id": matchId])
+                        .execute()
+                        .value
+                }
+            } catch {
+                print("Submit match score error: \(error)")
+            }
+
+            await SocialManager.shared.refreshMyProfile()
         }
     }
-    
-    // MARK: - 4. Lobby Waiting Poller
-    
-    private func startLobbyPolling(matchId: String) {
+
+    // MARK: - 5. Lobby Waiting Poller
+
+    private func startLobbyPolling(matchId: String, timeout: TimeInterval?) {
         lobbyPollingTask?.cancel()
+        let startedAt = Date()
         lobbyPollingTask = Task {
             while !Task.isCancelled {
                 try? await Task.sleep(nanoseconds: 2_000_000_000) // Poll every 2 seconds
                 guard self.isSearching else { break }
-                
+
+                if let timeout, Date().timeIntervalSince(startedAt) > timeout {
+                    self.cancelSearch()
+                    self.errorMessage = "Şu an çevrimiçi rakip bulunamadı. Robotla oynamayı dene!"
+                    break
+                }
+
                 do {
                     let updated: [DuelMatch] = try await client
                         .from("matches")
@@ -372,21 +394,28 @@ public class MatchManager: ObservableObject {
                         .eq("id", value: matchId)
                         .execute()
                         .value
-                    
-                    if let current = updated.first, current.status == "in_progress", let oppName = current.player2Name {
-                        await MainActor.run {
-                            self.currentOpponent = PublicProfile(
-                                id: current.player2Id ?? "opponent",
-                                username: "rakip",
-                                displayName: oppName,
-                                currentLevel: current.level,
-                                xp: 0,
-                                avatarEmoji: current.player2Avatar ?? "⚡️"
-                            )
-                            self.activeMatch = current
-                            self.isSearching = false
-                            self.showBattleArena = true
-                        }
+
+                    guard let current = updated.first else { continue }
+
+                    if current.status == "cancelled" {
+                        let wasInvite = current.mode.hasPrefix("friend_")
+                        self.cancelSearch()
+                        self.errorMessage = wasInvite ? "Davet reddedildi." : "Lobi kapandı. Tekrar dene."
+                        break
+                    }
+
+                    if current.status == "in_progress", let oppName = current.player2Name {
+                        self.currentOpponent = PublicProfile(
+                            id: current.player2Id ?? "opponent",
+                            username: "rakip",
+                            displayName: oppName,
+                            currentLevel: current.level,
+                            xp: 0,
+                            avatarEmoji: current.player2Avatar ?? "⚡️"
+                        )
+                        self.activeMatch = current
+                        self.isSearching = false
+                        self.showBattleArena = true
                         break
                     }
                 } catch {
@@ -395,44 +424,32 @@ public class MatchManager: ObservableObject {
             }
         }
     }
-    
+
     public func cancelSearch() {
         lobbyPollingTask?.cancel()
         lobbyPollingTask = nil
-        
+
         if let match = activeMatch, match.status == "waiting" {
             Task {
                 _ = try? await client
-                    .from("matches")
-                    .update(["status": "cancelled"])
-                    .eq("id", value: match.id)
+                    .rpc("cancel_match", params: ["p_match_id": match.id])
                     .execute()
             }
         }
-        
-        if let channel = realtimeChannel {
-            Task {
-                await client.realtimeV2.removeChannel(channel)
-            }
-        }
-        
+
+        tearDownChannel()
+
         isSearching = false
         roomCode = nil
         currentOpponent = nil
         activeMatch = nil
     }
-    
+
     public func resetMatch() {
         lobbyPollingTask?.cancel()
         lobbyPollingTask = nil
-        
-        if let channel = realtimeChannel {
-            Task {
-                await client.realtimeV2.removeChannel(channel)
-            }
-            self.realtimeChannel = nil
-        }
-        
+        tearDownChannel()
+
         isSearching = false
         roomCode = nil
         currentOpponent = nil
@@ -442,92 +459,9 @@ public class MatchManager: ObservableObject {
         matchFinishedEventReceived = false
         errorMessage = nil
     }
+}
 
-    // MARK: - Direct Friend Invites
-    
-    public func sendDirectInvite(to friend: PublicProfile, gameMode: Int, level: CEFRLevel = ProgressManager.shared.progress.currentLevel) async {
-        guard let myProfile = SocialManager.shared.myProfile else { return }
-        
-        isSearching = true
-        self.searchStatus = "\(friend.displayName) davet ediliyor..."
-        
-        let words = WordManager.shared.words(for: level).shuffled().prefix(50).map { $0.id }
-        let match = DuelMatch(
-            id: UUID().uuidString,
-            roomCode: nil, // No code needed for direct invites
-            player1Id: myProfile.id,
-            player2Id: friend.id,
-            player1Name: myProfile.displayName,
-            player1Avatar: myProfile.avatarEmoji,
-            status: "waiting",
-            mode: "friend_\(gameMode)",
-            level: level.rawValue,
-            wordIds: Array(words)
-        )
-        
-        do {
-            try await SupabaseManager.shared.client.from("matches").insert(match).execute()
-            self.activeMatch = match
-            await connectToMatchChannel(matchId: match.id)
-            startLobbyPolling(matchId: match.id)
-        } catch {
-            self.errorMessage = "Davet gönderilemedi: \(error.localizedDescription)"
-            self.isSearching = false
-        }
-    }
-    
-    public func acceptDirectInvite(match: DuelMatch) async {
-        guard let myProfile = SocialManager.shared.myProfile else { return }
-        
-        do {
-            var joined = match
-            joined.player2Name = myProfile.displayName
-            joined.player2Avatar = myProfile.avatarEmoji
-            joined.status = "in_progress"
-            
-            try await SupabaseManager.shared.client
-                .from("matches")
-                .update([
-                    "player2_name": myProfile.displayName,
-                    "player2_avatar": myProfile.avatarEmoji,
-                    "status": "in_progress"
-                ])
-                .eq("id", value: match.id)
-                .execute()
-            
-            self.activeMatch = joined
-            self.currentOpponent = PublicProfile(
-                id: joined.player1Id,
-                username: "rakip",
-                displayName: joined.player1Name,
-                currentLevel: joined.level,
-                xp: 0,
-                avatarEmoji: joined.player1Avatar
-            )
-            
-            await connectToMatchChannel(matchId: joined.id)
-            
-            try? await realtimeChannel?.broadcast(
-                event: "player_joined",
-                message: PlayerJoinedPayload(
-                    player2Id: myProfile.id,
-                    player2Name: myProfile.displayName,
-                    player2Avatar: myProfile.avatarEmoji
-                )
-            )
-            
-            self.isSearching = false
-            self.showBattleArena = true
-        } catch {
-            self.errorMessage = "Davet kabul edilemedi: \(error.localizedDescription)"
-        }
-    }
-    
-    public func declineDirectInvite(matchId: String) async {
-        _ = try? await SupabaseManager.shared.client
-            .from("matches")
-            .update(["status": "cancelled"])
-            .eq("id", value: matchId)
-            .execute()
-    }
+private struct SubmitScoreParams: Encodable {
+    let p_match_id: String
+    let p_score: Int
 }

@@ -46,7 +46,9 @@ public class WordManager {
                     exampleTurkish: finalExampleTr,
                     level: word.level,
                     imageURL: word.imageURL,
-                    audioURL: word.audioURL
+                    audioURL: word.audioURL,
+                    pos: word.pos,
+                    freqRank: word.freqRank
                 )
             }
             print("WordManager: Loaded \(self.allWords.count) words.")
@@ -64,32 +66,35 @@ public class WordManager {
     // MARK: - Next Word (Optimize Algoritma)
 
     /// Bir sonraki kelimeyi döndür.
-    /// - Önce hiç görülmemiş kelimelerden seç (sıralı, karıştırılmış)
-    /// - Hepsi görüldüyse: en eski görülen kelimeyi getir (spaced repetition lite)
+    /// 1. Tekrar zamanı gelmiş kelimeler (FSRS), en çok geciken önce
+    /// 2. Hiç görülmemiş kelimeler, en yaygından başlayarak (freqRank)
+    /// 3. Hepsi görüldüyse: en eski görülen kelime. Atlanan kelimeler hiç gösterilmez.
     public func nextWord(for level: CEFRLevel) -> Word? {
         let levelWords = words(for: level)
         guard !levelWords.isEmpty else { return nil }
 
         let seen = seenWordIDs()
+        let seenSet = Set(seen)
         let levelIDs = Set(levelWords.map { $0.id })
+        let memory = MemoryStore.shared.all
+        let currentId = AppSettingsManager.shared.getCurrentWordId()
 
-        // Henüz görülmemiş kelimeler (shuffle ile random sıra)
-        let unseen = levelWords.filter { !seen.contains($0.id) }
-        if !unseen.isEmpty {
-            return unseen.randomElement()
+        if let dueId = MemoryStore.shared.dueWordIDs(among: levelIDs).first(where: { $0 != currentId }),
+           let word = getWord(byId: dueId) {
+            return word
         }
 
-        // Hepsi görüldüyse: en eski seen (queue'nun başı) ama mevcut kelimenin kendisi değil
-        let currentId = AppSettingsManager.shared.getCurrentWordId()
-        let seenInLevel = seen.filter { levelIDs.contains($0) }
+        let fresh = levelWords.filter { !seenSet.contains($0.id) && memory[$0.id] == nil }
+        if let word = fresh.min(by: { ($0.freqRank ?? Int.max) < ($1.freqRank ?? Int.max) }) {
+            return word
+        }
 
-        // Mevcut kelimeden farklı olan en eskiyi seç
-        if let oldestId = seenInLevel.first(where: { $0 != currentId }),
+        // Mevcut kelimeden farklı, atlanmamış en eski görülen kelime
+        if let oldestId = seen.first(where: { levelIDs.contains($0) && $0 != currentId && memory[$0]?.state != .skipped }),
            let word = getWord(byId: oldestId) {
             return word
         }
 
-        // Sadece 1 kelime var (mevcut)
         return levelWords.first
     }
 

@@ -121,10 +121,16 @@ public class AuthManager: ObservableObject {
                 ]
             )
             let user = response.user
+            // E-posta doğrulaması açıksa session gelmez; kullanıcı henüz giriş yapmış sayılmaz
+            guard response.session != nil else {
+                throw AuthError.supabaseError("Kayıt başarılı! Lütfen e-postana gelen doğrulama bağlantısına tıkla, ardından giriş yap.")
+            }
             self.currentUser = UserProfile(id: user.id.uuidString, firstName: firstName, lastName: lastName, email: trimEmail)
             self.isGuest = false
             self.isAuthenticated = true
             await SocialManager.shared.loadProfileAndFriends()
+        } catch let error as AuthError {
+            throw error
         } catch {
             throw AuthError.supabaseError("Kayıt hatası: \(error.localizedDescription)")
         }
@@ -156,9 +162,31 @@ public class AuthManager: ObservableObject {
             // Ignore error
         }
         UserDefaults.standard.removeObject(forKey: guestStorageKey)
+        SocialManager.shared.clearSession()
+        MatchManager.shared.resetMatch()
         self.isAuthenticated = false
         self.isGuest = false
         self.currentUser = nil
+    }
+
+    /// Hesabı sunucuda kalıcı olarak siler (App Store 5.1.1(v)), ardından cihazdaki hesap verisini temizler.
+    /// Öğrenme ilerlemesi (kelimeler, seviyeler) cihazda kalır; o hesaba bağlı değildir.
+    public func deleteAccount() async throws {
+        if !isGuest {
+            do {
+                try await client.functions.invoke("delete-account")
+            } catch {
+                throw AuthError.supabaseError("Hesap silinemedi: \(error.localizedDescription)")
+            }
+        }
+
+        let defaults = UserDefaults.standard
+        defaults.removeObject(forKey: "user_profile_photo_data")
+        defaults.removeObject(forKey: "pendingPushToken")
+        for key in defaults.dictionaryRepresentation().keys where key.hasPrefix("syncedPushToken_") {
+            defaults.removeObject(forKey: key)
+        }
+        await logout()
     }
 
     public func restoreSession() async {
@@ -182,6 +210,9 @@ public class AuthManager: ObservableObject {
                 self.isAuthenticated = false
                 self.isGuest = false
                 self.currentUser = nil
+                // Oturum yoksa diskteki eski profil önbelleği de gitsin; yoksa giriş yapılmamış
+                // ekranda önceki kullanıcının ismi görünür
+                SocialManager.shared.clearSession()
             }
         }
     }

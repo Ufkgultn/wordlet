@@ -46,10 +46,10 @@ struct HomeView: View {
                 if words.isEmpty {
                     VStack(spacing: 16) {
                         ProgressView()
-                            .tint(.white)
+                            .tint(Theme.fg)
                         Text("Tüm kelimeleri gördün!")
                             .font(.headline)
-                            .foregroundStyle(.white)
+                            .foregroundStyle(Theme.fg)
                         Button("Baştan Başla") {
                             loadInitialWords(forceReset: true)
                         }
@@ -124,7 +124,7 @@ struct HomeView: View {
                         
                         Text(displayName)
                             .font(.system(size: 15, weight: .bold, design: .rounded))
-                            .foregroundColor(.white.opacity(0.95))
+                            .foregroundColor(Theme.fg.opacity(0.95))
                             .lineLimit(1)
                     }
                 }
@@ -141,7 +141,7 @@ struct HomeView: View {
                             Text("Giriş Yap")
                         }
                         .font(.caption.bold())
-                        .foregroundColor(.black)
+                        .foregroundColor(Theme.onAccent)
                         .padding(.horizontal, 10)
                         .padding(.vertical, 6)
                         .background(Capsule().fill(Theme.accent))
@@ -155,7 +155,7 @@ struct HomeView: View {
                 } label: {
                     Text(isPremium ? "👑" : "Premium Al")
                         .font(.caption.bold())
-                        .foregroundColor(isPremium ? .yellow : .white)
+                        .foregroundColor(isPremium ? .yellow : Theme.fg)
                         .padding(.horizontal, 10)
                         .padding(.vertical, 6)
                         .background(.regularMaterial, in: Capsule())
@@ -176,18 +176,18 @@ struct HomeView: View {
                 HStack {
                     Text("Öğrenilen Kelimeler")
                         .font(.caption2)
-                        .foregroundStyle(.white.opacity(0.7))
+                        .foregroundStyle(Theme.fg.opacity(0.7))
                     Spacer()
                     Text("\(knownLevelWords) / \(totalLevelWords)")
                         .font(.caption2.bold())
-                        .foregroundStyle(Theme.accent)
+                        .foregroundStyle(Theme.accentText)
                 }
                 .padding(.horizontal, 24)
 
                 GeometryReader { geo in
                     ZStack(alignment: .leading) {
                         Capsule()
-                            .fill(Color.white.opacity(0.1))
+                            .fill(Theme.fg.opacity(0.1))
                         Capsule()
                             .fill(Theme.accent)
                             .frame(width: max(0, geo.size.width * progressFraction))
@@ -212,11 +212,33 @@ struct HomeView: View {
                 } label: {
                     ZStack {
                         Circle()
-                            .fill(Color.white.opacity(0.1))
+                            .fill(Theme.fg.opacity(0.1))
                             .frame(width: 64, height: 64)
                         Image(systemName: "xmark")
                             .font(.system(size: 24, weight: .bold))
                             .foregroundColor(Theme.wrong)
+                    }
+                }
+                .disabled(words.isEmpty)
+
+                // "Bu kelimeyi atla": bir daha hiç gösterilmez
+                Button {
+                    if let topWord = words.first {
+                        handleSkip(word: topWord)
+                    }
+                } label: {
+                    VStack(spacing: 4) {
+                        ZStack {
+                            Circle()
+                                .fill(Theme.fg.opacity(0.06))
+                                .frame(width: 44, height: 44)
+                            Image(systemName: "forward.end.fill")
+                                .font(.system(size: 16, weight: .bold))
+                                .foregroundColor(Theme.fg.opacity(0.6))
+                        }
+                        Text("Atla")
+                            .font(.caption2.weight(.semibold))
+                            .foregroundColor(Theme.fg.opacity(0.5))
                     }
                 }
                 .disabled(words.isEmpty)
@@ -228,7 +250,7 @@ struct HomeView: View {
                 } label: {
                     ZStack {
                         Circle()
-                            .fill(Color.white.opacity(0.1))
+                            .fill(Theme.fg.opacity(0.1))
                             .frame(width: 64, height: 64)
                         Image(systemName: "checkmark")
                             .font(.system(size: 24, weight: .bold))
@@ -248,12 +270,12 @@ struct HomeView: View {
                     Text(ProgressManager.shared.hasTakenDailyTest() ? "Günlük Test (Tamamlandı)" : "Günlük Teste Başla")
                 }
                 .font(.headline)
-                .foregroundColor(ProgressManager.shared.hasTakenDailyTest() ? .white.opacity(0.5) : .white)
+                .foregroundColor(ProgressManager.shared.hasTakenDailyTest() ? Theme.fg.opacity(0.5) : .white)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 16)
                 .background(
                     RoundedRectangle(cornerRadius: 16)
-                        .fill(ProgressManager.shared.hasTakenDailyTest() ? Color.white.opacity(0.12) : Theme.accent)
+                        .fill(ProgressManager.shared.hasTakenDailyTest() ? Theme.fg.opacity(0.12) : Theme.accent)
                 )
             }
             .disabled(ProgressManager.shared.hasTakenDailyTest())
@@ -263,9 +285,9 @@ struct HomeView: View {
 
     // MARK: - Logic
 
+    /// Seviye ekranıyla aynı ölçü: FSRS'e göre öğrenilmiş (tekrarda, ≥7 gün hatırlanan) kelimeler
     private func knownWordsCount() -> Int {
-        let levelWords = WordManager.shared.words(for: currentLevel).map { $0.id }
-        return progress.knownWordIDs.filter { levelWords.contains($0) }.count
+        ProgressManager.shared.masteredCount(for: currentLevel)
     }
 
     private func handleSwipe(word: Word, direction: SwipeDirection) {
@@ -286,9 +308,26 @@ struct HomeView: View {
         }
     }
 
+    private func handleSkip(word: Word) {
+        MemoryStore.shared.skip(wordID: word.id)
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+            words.removeAll { $0.id == word.id }
+        }
+        if words.count < 3 {
+            loadMoreWords()
+        }
+    }
+
+    /// Seviyenin atlanmamış kelimeleri (hafıza bir kere okunur)
+    private func unskippedWords(for level: CEFRLevel) -> [Word] {
+        let memory = MemoryStore.shared.all
+        return WordManager.shared.words(for: level).filter { memory[$0.id]?.state != .skipped }
+    }
+
     private func loadInitialWords(forceReset: Bool = false) {
         let level = currentLevel
-        let allWords = WordManager.shared.words(for: level)
+        let allWords = unskippedWords(for: level)
         
         let knownIDs = Set(progress.knownWordIDs)
         let unknownIDs = Set(progress.unknownWordIDs)
@@ -315,7 +354,7 @@ struct HomeView: View {
 
     private func loadMoreWords() {
         let level = currentLevel
-        let allWords = WordManager.shared.words(for: level)
+        let allWords = unskippedWords(for: level)
         let knownIDs = Set(progress.knownWordIDs)
         let existingIDs = Set(words.map { $0.id })
         
@@ -344,7 +383,7 @@ struct LevelBadge: View {
     var body: some View {
         Text(level.rawValue)
             .font(.system(size: 14, weight: .black, design: .rounded))
-            .foregroundColor(.white)
+            .foregroundColor(Theme.fg)
             .padding(.horizontal, 12)
             .padding(.vertical, 6)
             .background(
@@ -380,17 +419,17 @@ struct SwipeCard: View {
                 // Word Header
                 Text(word.english)
                     .font(.system(size: 42, weight: .bold, design: .serif))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(Theme.fg)
                     .multilineTextAlignment(.center)
                     .minimumScaleFactor(0.5)
                     .padding(.top, 40)
 
                 Text(word.turkish)
                     .font(.title3.weight(.bold))
-                    .foregroundStyle(Theme.background)
+                    .foregroundStyle(Theme.fgInverse)
                     .padding(.horizontal, 24)
                     .padding(.vertical, 10)
-                    .background(Color.white.opacity(0.9))
+                    .background(Theme.fg.opacity(0.9))
                     .clipShape(Capsule())
                     .minimumScaleFactor(0.5)
 
@@ -400,23 +439,23 @@ struct SwipeCard: View {
                 VStack(spacing: 12) {
                     Text("\"\(word.example)\"")
                         .font(.body.italic())
-                        .foregroundStyle(.white.opacity(0.9))
+                        .foregroundStyle(Theme.fg.opacity(0.9))
                         .multilineTextAlignment(.center)
                         .fixedSize(horizontal: false, vertical: true)
 
                     if let tr = word.exampleTurkish {
                         Divider()
-                            .background(Color.white.opacity(0.15))
+                            .background(Theme.fg.opacity(0.15))
 
                         Text("\"\(tr)\"")
                             .font(.footnote)
-                            .foregroundStyle(.white.opacity(0.55))
+                            .foregroundStyle(Theme.fg.opacity(0.55))
                             .multilineTextAlignment(.center)
                             .fixedSize(horizontal: false, vertical: true)
                     }
                 }
                 .padding(20)
-                .background(Color.black.opacity(0.2))
+                .background(Theme.cardInset)
                 .cornerRadius(16)
 
                 Spacer()
@@ -428,9 +467,9 @@ struct SwipeCard: View {
                     } label: {
                         Image(systemName: "speaker.wave.2.fill")
                             .font(.title2)
-                            .foregroundColor(.white)
+                            .foregroundColor(Theme.fg)
                             .frame(width: 50, height: 50)
-                            .background(Circle().fill(Color.white.opacity(0.15)))
+                            .background(Circle().fill(Theme.fg.opacity(0.15)))
                     }
 
                     Button {
@@ -438,9 +477,9 @@ struct SwipeCard: View {
                     } label: {
                         Text("TR")
                             .font(.headline.weight(.bold))
-                            .foregroundColor(.white)
+                            .foregroundColor(Theme.fg)
                             .frame(width: 50, height: 50)
-                            .background(Circle().fill(Color.white.opacity(0.15)))
+                            .background(Circle().fill(Theme.fg.opacity(0.15)))
                     }
                 }
                 .padding(.bottom, 30)
@@ -449,12 +488,13 @@ struct SwipeCard: View {
             .frame(width: geo.size.width, height: geo.size.height)
             .background(
                 ZStack {
-                    Theme.accent // Fully opaque vibrant mint card background
+                    Theme.cardFill // Koyu temada canlı nane, açık temada pastel
                     color // Swipe overlay color
                 }
             )
             .cornerRadius(24)
-            .shadow(color: .black.opacity(0.2), radius: 10, y: 5)
+            .overlay(RoundedRectangle(cornerRadius: 24).stroke(Theme.accent.opacity(0.6), lineWidth: 1))
+            .shadow(color: Theme.cardShadow, radius: 10, y: 5)
             // Overlay Labels
             .overlay(
                 ZStack {

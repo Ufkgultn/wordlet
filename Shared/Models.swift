@@ -57,9 +57,13 @@ public struct Word: Codable, Identifiable, Hashable {
     public let level: CEFRLevel
     public let imageURL: String?
     public let audioURL: String?
+    /// Kelime türü (noun / verb / adjective ...) — tools/wordpipeline üretir
+    public let pos: String?
+    /// İngilizce sıklık sırası (1 = en yaygın)
+    public let freqRank: Int?
 
     enum CodingKeys: String, CodingKey {
-        case id, english, turkish, example, level
+        case id, english, turkish, example, level, pos, freqRank
         case exampleTurkish = "exampleTurkish"
         case imageURL = "imageUrl"
         case audioURL = "audioUrl"
@@ -73,7 +77,9 @@ public struct Word: Codable, Identifiable, Hashable {
         exampleTurkish: String? = nil,
         level: CEFRLevel,
         imageURL: String? = nil,
-        audioURL: String? = nil
+        audioURL: String? = nil,
+        pos: String? = nil,
+        freqRank: Int? = nil
     ) {
         self.id = id
         self.english = english
@@ -83,6 +89,8 @@ public struct Word: Codable, Identifiable, Hashable {
         self.level = level
         self.imageURL = imageURL
         self.audioURL = audioURL
+        self.pos = pos
+        self.freqRank = freqRank
     }
 
     public init(from decoder: Decoder) throws {
@@ -94,7 +102,10 @@ public struct Word: Codable, Identifiable, Hashable {
         exampleTurkish = try c.decodeIfPresent(String.self, forKey: .exampleTurkish)
         imageURL = try c.decodeIfPresent(String.self, forKey: .imageURL)
         audioURL = try c.decodeIfPresent(String.self, forKey: .audioURL)
+        pos = try c.decodeIfPresent(String.self, forKey: .pos)
+        freqRank = try c.decodeIfPresent(Int.self, forKey: .freqRank)
 
+        // Seviye words.json'dan gelir (CEFR-J). ID aralığı sadece eski veri için yedek.
         if let explicit = try c.decodeIfPresent(CEFRLevel.self, forKey: .level) {
             level = explicit
         } else {
@@ -181,7 +192,6 @@ public struct PublicProfile: Codable, Identifiable, Hashable {
     public var avatarEmoji: String
     public var matchesWon: Int
     public var matchesPlayed: Int
-    public var pushToken: String?
     
     enum CodingKeys: String, CodingKey {
         case id, username, xp
@@ -190,14 +200,12 @@ public struct PublicProfile: Codable, Identifiable, Hashable {
         case avatarEmoji = "avatar_emoji"
         case matchesWon = "matches_won"
         case matchesPlayed = "matches_played"
-        case pushToken = "push_token"
         // Fallback keys for local storage
         case altDisplayName = "displayName"
         case altCurrentLevel = "currentLevel"
         case altAvatarEmoji = "avatarEmoji"
         case altMatchesWon = "matchesWon"
         case altMatchesPlayed = "matchesPlayed"
-        case altPushToken = "pushToken"
     }
     
     public init(
@@ -208,8 +216,7 @@ public struct PublicProfile: Codable, Identifiable, Hashable {
         xp: Int,
         avatarEmoji: String,
         matchesWon: Int = 0,
-        matchesPlayed: Int = 0,
-        pushToken: String? = nil
+        matchesPlayed: Int = 0
     ) {
         self.id = id
         self.username = username
@@ -219,7 +226,6 @@ public struct PublicProfile: Codable, Identifiable, Hashable {
         self.avatarEmoji = avatarEmoji
         self.matchesWon = matchesWon
         self.matchesPlayed = matchesPlayed
-        self.pushToken = pushToken
     }
     
     public init(from decoder: Decoder) throws {
@@ -242,8 +248,6 @@ public struct PublicProfile: Codable, Identifiable, Hashable {
         self.matchesPlayed = try container.decodeIfPresent(Int.self, forKey: .matchesPlayed)
             ?? container.decodeIfPresent(Int.self, forKey: .altMatchesPlayed)
             ?? 0
-        self.pushToken = try container.decodeIfPresent(String.self, forKey: .pushToken)
-            ?? container.decodeIfPresent(String.self, forKey: .altPushToken)
     }
     
     public func encode(to encoder: Encoder) throws {
@@ -256,7 +260,6 @@ public struct PublicProfile: Codable, Identifiable, Hashable {
         try container.encode(avatarEmoji, forKey: .avatarEmoji)
         try container.encode(matchesWon, forKey: .matchesWon)
         try container.encode(matchesPlayed, forKey: .matchesPlayed)
-        try container.encodeIfPresent(pushToken, forKey: .pushToken)
     }
 }
 

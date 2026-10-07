@@ -80,16 +80,16 @@ struct WordMatchBattleView: View {
                     }) {
                         Image(systemName: "xmark")
                             .font(.headline)
-                            .foregroundColor(.white)
+                            .foregroundColor(Theme.fg)
                             .padding(12)
-                            .background(Circle().fill(Color.white.opacity(0.1)))
+                            .background(Circle().fill(Theme.fg.opacity(0.1)))
                     }
                     Spacer()
                     
                     // Show robot level and active CEFR level dynamically
                     Text(isRobot ? "Robot Seviye \(robotLevel) (\(activeCEFRLevel.rawValue))" : "Kelime Düellosu (\(activeCEFRLevel.rawValue))")
                         .font(.headline.bold())
-                        .foregroundColor(.white)
+                        .foregroundColor(Theme.fg)
                     
                     Spacer()
                     Text("\(timeRemaining)s")
@@ -108,36 +108,36 @@ struct WordMatchBattleView: View {
                     VStack(alignment: .leading, spacing: 6) {
                         Text("Sen")
                             .font(.caption)
-                            .foregroundColor(.white.opacity(0.6))
+                            .foregroundColor(Theme.fg.opacity(0.6))
                         HStack {
                             Text("⚡️")
                             Text("\(userMatches)/\(totalPairs)")
                                 .font(.title3.bold())
-                                .foregroundColor(.white)
+                                .foregroundColor(Theme.fg)
                         }
                         ProgressView(value: Double(userMatches), total: Double(totalPairs))
                             .tint(.green)
                     }
                     .padding(12)
-                    .background(Color.white.opacity(0.06))
+                    .background(Theme.fg.opacity(0.06))
                     .cornerRadius(12)
                     
                     // Opponent Score
                     VStack(alignment: .leading, spacing: 6) {
                         Text(opponentName)
                             .font(.caption)
-                            .foregroundColor(.white.opacity(0.6))
+                            .foregroundColor(Theme.fg.opacity(0.6))
                         HStack {
                             Text(isRobot ? "🤖" : "👤")
                             Text("\(opponentMatches)/\(totalPairs)")
                                 .font(.title3.bold())
-                                .foregroundColor(.white)
+                                .foregroundColor(Theme.fg)
                         }
                         ProgressView(value: Double(opponentMatches), total: Double(totalPairs))
                             .tint(.red)
                     }
                     .padding(12)
-                    .background(Color.white.opacity(0.06))
+                    .background(Theme.fg.opacity(0.06))
                     .cornerRadius(12)
                 }
                 .padding(.horizontal)
@@ -170,7 +170,6 @@ struct WordMatchBattleView: View {
                 Spacer()
             }
         }
-        .preferredColorScheme(.dark)
         .onAppear {
             setupGame()
         }
@@ -357,11 +356,6 @@ struct WordMatchBattleView: View {
             selectedId = nil
             
             if userMatches == totalPairs {
-                if !isRobot, let myId = SocialManager.shared.myProfile?.id {
-                    Task {
-                        await matchManager.sendMatchFinished(winnerId: myId)
-                    }
-                }
                 endGame()
             }
         } else {
@@ -408,35 +402,29 @@ struct WordMatchBattleView: View {
     }
     
     private func endGame() {
+        if !isRobot { matchManager.finishMatch(score: userMatches) }
         cleanup()
         withAnimation {
             if userMatches > opponentMatches {
                 gameState = .won
-                earnedXP = isRobot ? (15 + robotLevel * 2) : 50
+                earnedXP = isRobot ? 20 : 50
                 UINotificationFeedbackGenerator().notificationOccurred(.success)
                 // Unlock next level if matched level is the current maximum level
+                if isRobot { RobotArenaProgress.recordWin(level: activeCEFRLevel, robotLevel: robotLevel) }
                 if isRobot {
-                    let key = "robotDuelLevel_\(activeCEFRLevel.rawValue)"
-                    let currentLevel = UserDefaults.standard.integer(forKey: key)
-                    let stored = currentLevel == 0 ? 1 : currentLevel
-                    if robotLevel == stored {
-                        UserDefaults.standard.set(min(30, stored + 1), forKey: key)
-                    }
-                }
-                Task {
-                    await SocialManager.shared.recordDuelWin(xpGained: earnedXP, isWin: true)
+                    Task { await SocialManager.shared.recordBotDuel(won: true) }
                 }
             } else if userMatches < opponentMatches {
                 gameState = .lost
                 earnedXP = isRobot ? 5 : 15
-                Task {
-                    await SocialManager.shared.recordDuelWin(xpGained: earnedXP, isWin: false)
+                if isRobot {
+                    Task { await SocialManager.shared.recordBotDuel(won: false) }
                 }
             } else {
                 gameState = .draw
-                earnedXP = isRobot ? 8 : 25
-                Task {
-                    await SocialManager.shared.recordDuelWin(xpGained: earnedXP, isWin: false)
+                earnedXP = isRobot ? 5 : 25
+                if isRobot {
+                    Task { await SocialManager.shared.recordBotDuel(won: false) }
                 }
             }
         }
@@ -445,21 +433,21 @@ struct WordMatchBattleView: View {
     // MARK: - Styling
     
     private func textColor(for item: MatchItem) -> Color {
-        if item.isSelected { return .white }
-        if item.isWrong { return .white }
-        return .white.opacity(0.9)
+        if item.isSelected { return Theme.fg }
+        if item.isWrong { return Theme.fg }
+        return Theme.fg.opacity(0.9)
     }
     
     private func backgroundColor(for item: MatchItem) -> Color {
         if item.isSelected { return Theme.accent.opacity(0.3) }
         if item.isWrong { return Theme.wrong.opacity(0.25) }
-        return Color.white.opacity(0.06)
+        return Theme.fg.opacity(0.06)
     }
     
     private func borderColor(for item: MatchItem) -> Color {
         if item.isSelected { return Theme.accent }
         if item.isWrong { return Theme.wrong }
-        return Color.white.opacity(0.12)
+        return Theme.fg.opacity(0.12)
     }
     
     // MARK: - Result View
@@ -480,7 +468,7 @@ struct WordMatchBattleView: View {
             VStack(spacing: 8) {
                 Text(resultTitle)
                     .font(.title.bold())
-                    .foregroundColor(.white)
+                    .foregroundColor(Theme.fg)
                 
                 Text(resultMessage)
                     .font(.body)
@@ -516,7 +504,7 @@ struct WordMatchBattleView: View {
                 
                 Text("vs")
                     .font(.headline)
-                    .foregroundColor(.white.opacity(0.3))
+                    .foregroundColor(Theme.fg.opacity(0.3))
                 
                 VStack(spacing: 4) {
                     Text(opponentName)
@@ -528,7 +516,7 @@ struct WordMatchBattleView: View {
                 }
             }
             .padding()
-            .background(Color.white.opacity(0.05))
+            .background(Theme.fg.opacity(0.05))
             .cornerRadius(16)
             
             Spacer()
@@ -538,7 +526,7 @@ struct WordMatchBattleView: View {
             }) {
                 Text("Kapat")
                     .font(.headline)
-                    .foregroundColor(.white)
+                    .foregroundColor(Theme.fg)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 16)
                     .background(RoundedRectangle(cornerRadius: 16).fill(resultColor))

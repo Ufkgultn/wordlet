@@ -9,7 +9,7 @@ struct LibraryView: View {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Learned Words")
                         .font(.system(size: 34, weight: .bold, design: .rounded))
-                        .foregroundColor(.white)
+                        .foregroundColor(Theme.fg)
                     Text("\(seenWords.count) kelime widget/app akışından eklendi")
                         .font(.headline)
                         .foregroundColor(Theme.textSecondary)
@@ -50,7 +50,7 @@ struct LibraryView: View {
                         .buttonStyle(.borderless)
                     }
                 }
-                .listRowBackground(Color.white.opacity(0.05))
+                .listRowBackground(Theme.fg.opacity(0.05))
             }
             .scrollContentBackground(.hidden)
         }

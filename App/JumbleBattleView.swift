@@ -39,11 +39,11 @@ struct JumbleBattleView: View {
                         VStack(spacing: 30) {
                             Text("Harfleri Sıraya Diz!")
                                 .font(.caption.bold())
-                                .foregroundColor(Theme.accent)
+                                .foregroundColor(Theme.accentText)
                             
                             Text(words[currentIndex].turkish)
                                 .font(.system(size: 32, weight: .bold))
-                                .foregroundColor(.white)
+                                .foregroundColor(Theme.fg)
                                 .multilineTextAlignment(.center)
                             
                             // Gösterilen Harfler (Çizgiler/Seçilenler)
@@ -51,9 +51,9 @@ struct JumbleBattleView: View {
                                 ForEach(0..<targetLetters.count, id: \.self) { i in
                                     Text(i < currentInput.count ? currentInput[i] : "_")
                                         .font(.title2.bold())
-                                        .foregroundColor(i < currentInput.count ? .white : .white.opacity(0.3))
+                                        .foregroundColor(i < currentInput.count ? Theme.fg : Theme.fg.opacity(0.3))
                                         .frame(width: 30, height: 40)
-                                        .background(Color.white.opacity(0.1))
+                                        .background(Theme.fg.opacity(0.1))
                                         .cornerRadius(8)
                                 }
                             }
@@ -65,9 +65,9 @@ struct JumbleBattleView: View {
                                     Button(action: { selectLetter(index: index) }) {
                                         Text(item.letter)
                                             .font(.title3.bold())
-                                            .foregroundColor(.white)
+                                            .foregroundColor(item.isUsed ? Theme.fg : .white)
                                             .frame(width: 50, height: 50)
-                                            .background(item.isUsed ? Color.white.opacity(0.1) : Theme.accent)
+                                            .background(item.isUsed ? Theme.fg.opacity(0.1) : Theme.accent)
                                             .cornerRadius(12)
                                     }
                                     .disabled(item.isUsed)
@@ -162,9 +162,9 @@ struct JumbleBattleView: View {
     }
     
     // Boilerplate code
-    private var headerView: some View { HStack { Button(action: { cleanup(); dismiss() }) { Image(systemName: "xmark").font(.headline).foregroundColor(.white).padding(12).background(Circle().fill(Color.white.opacity(0.1))) }; Spacer(); Text(isRobot ? "Robot Seviye \(robotLevel)" : "Harf Avı").font(.headline.bold()).foregroundColor(.white); Spacer(); Text("\(timeRemaining)s").font(.system(size: 16, weight: .bold, design: .monospaced)).foregroundColor(.orange).padding(.horizontal, 12).padding(.vertical, 6).background(Capsule().fill(Color.orange.opacity(0.15))) }.padding(.horizontal).padding(.top, 10) }
-    private var scoreBoard: some View { HStack(spacing: 16) { VStack(alignment: .leading, spacing: 6) { Text("Sen").font(.caption).foregroundColor(.white.opacity(0.6)); Text("\(userMatches)").font(.title3.bold()).foregroundColor(.green) }.padding(12).frame(maxWidth: .infinity).background(Color.white.opacity(0.06)).cornerRadius(12); VStack(alignment: .leading, spacing: 6) { Text(opponentName).font(.caption).foregroundColor(.white.opacity(0.6)); Text("\(opponentMatches)").font(.title3.bold()).foregroundColor(.red) }.padding(12).frame(maxWidth: .infinity).background(Color.white.opacity(0.06)).cornerRadius(12) }.padding(.horizontal) }
+    private var headerView: some View { HStack { Button(action: { cleanup(); dismiss() }) { Image(systemName: "xmark").font(.headline).foregroundColor(Theme.fg).padding(12).background(Circle().fill(Theme.fg.opacity(0.1))) }; Spacer(); Text(isRobot ? "Robot Seviye \(robotLevel)" : "Harf Avı").font(.headline.bold()).foregroundColor(Theme.fg); Spacer(); Text("\(timeRemaining)s").font(.system(size: 16, weight: .bold, design: .monospaced)).foregroundColor(.orange).padding(.horizontal, 12).padding(.vertical, 6).background(Capsule().fill(Color.orange.opacity(0.15))) }.padding(.horizontal).padding(.top, 10) }
+    private var scoreBoard: some View { HStack(spacing: 16) { VStack(alignment: .leading, spacing: 6) { Text("Sen").font(.caption).foregroundColor(Theme.fg.opacity(0.6)); Text("\(userMatches)").font(.title3.bold()).foregroundColor(.green) }.padding(12).frame(maxWidth: .infinity).background(Theme.fg.opacity(0.06)).cornerRadius(12); VStack(alignment: .leading, spacing: 6) { Text(opponentName).font(.caption).foregroundColor(Theme.fg.opacity(0.6)); Text("\(opponentMatches)").font(.title3.bold()).foregroundColor(.red) }.padding(12).frame(maxWidth: .infinity).background(Theme.fg.opacity(0.06)).cornerRadius(12) }.padding(.horizontal) }
     private func cleanup() { timer?.invalidate(); timer = nil; opponentTimer?.invalidate(); opponentTimer = nil; if !isRobot { matchManager.resetMatch() } }
-    private func endGame() { cleanup(); withAnimation { if userMatches > opponentMatches { gameState = .won; earnedXP = isRobot ? (15 + robotLevel * 2) : 50; if isRobot { let key = "robotDuelLevel_\(activeCEFRLevel.rawValue)"; let c = UserDefaults.standard.integer(forKey: key); let s = c == 0 ? 1 : c; if robotLevel == s { UserDefaults.standard.set(min(30, s + 1), forKey: key) } }; Task { await SocialManager.shared.recordDuelWin(xpGained: earnedXP, isWin: true) } } else if userMatches < opponentMatches { gameState = .lost; earnedXP = isRobot ? 5 : 15; Task { await SocialManager.shared.recordDuelWin(xpGained: earnedXP, isWin: false) } } else { gameState = .draw; earnedXP = isRobot ? 8 : 25; Task { await SocialManager.shared.recordDuelWin(xpGained: earnedXP, isWin: false) } }; if !isRobot, let myId = SocialManager.shared.myProfile?.id { Task { await matchManager.sendMatchFinished(winnerId: myId) } } } }
-    private var resultView: some View { VStack(spacing: 24) { Spacer(); Text(gameState == .won ? "🏆" : (gameState == .lost ? "💔" : "🤝")).font(.system(size: 80)); Text(gameState == .won ? "Kazandın!" : (gameState == .lost ? "Kaybettin!" : "Berabere!")).font(.largeTitle.bold()).foregroundColor(.white); Text("Sen: \(userMatches) - \(opponentName): \(opponentMatches)").font(.headline).foregroundColor(.white.opacity(0.8)); if earnedXP > 0 { Text("+\(earnedXP) XP").font(.title3.bold()).foregroundColor(.yellow) }; Spacer(); Button(action: { dismiss() }) { Text("Kapat").font(.headline).foregroundColor(.white).frame(maxWidth: .infinity).padding().background(RoundedRectangle(cornerRadius: 16).fill(Color.blue)).padding(.horizontal, 24) }.padding(.bottom, 20) } }
+    private func endGame() { if !isRobot { matchManager.finishMatch(score: userMatches) }; cleanup(); withAnimation { if userMatches > opponentMatches { gameState = .won; earnedXP = isRobot ? 20 : 50; if isRobot { RobotArenaProgress.recordWin(level: activeCEFRLevel, robotLevel: robotLevel) }; if isRobot { Task { await SocialManager.shared.recordBotDuel(won: true) } } } else if userMatches < opponentMatches { gameState = .lost; earnedXP = isRobot ? 5 : 15; if isRobot { Task { await SocialManager.shared.recordBotDuel(won: false) } } } else { gameState = .draw; earnedXP = isRobot ? 5 : 25; if isRobot { Task { await SocialManager.shared.recordBotDuel(won: false) } } }; } }
+    private var resultView: some View { VStack(spacing: 24) { Spacer(); Text(gameState == .won ? "🏆" : (gameState == .lost ? "💔" : "🤝")).font(.system(size: 80)); Text(gameState == .won ? "Kazandın!" : (gameState == .lost ? "Kaybettin!" : "Berabere!")).font(.largeTitle.bold()).foregroundColor(Theme.fg); Text("Sen: \(userMatches) - \(opponentName): \(opponentMatches)").font(.headline).foregroundColor(Theme.fg.opacity(0.8)); if earnedXP > 0 { Text("+\(earnedXP) XP").font(.title3.bold()).foregroundColor(.yellow) }; Spacer(); Button(action: { dismiss() }) { Text("Kapat").font(.headline).foregroundColor(.white).frame(maxWidth: .infinity).padding().background(RoundedRectangle(cornerRadius: 16).fill(Color.blue)).padding(.horizontal, 24) }.padding(.bottom, 20) } }
 }

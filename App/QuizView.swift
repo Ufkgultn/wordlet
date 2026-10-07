@@ -6,6 +6,10 @@ import WidgetKit
 struct QuizView: View {
     let levelTestMode: Bool
     let dailyTestMode: Bool
+    let placementMode: Bool
+    /// Seviye tespitinde seviye başına doğru sayısı
+    @State private var placementCorrect: [CEFRLevel: Int] = [:]
+    @State private var placedLevel: CEFRLevel? = nil
     @State private var targetLevel: CEFRLevel
     @State private var starLevel: Int? = nil
 
@@ -21,15 +25,22 @@ struct QuizView: View {
     @State private var progressAnim: CGFloat = 0
     @State private var isStarted = false
 
-    init(levelTestMode: Bool = false, dailyTestMode: Bool = false, targetLevel: CEFRLevel? = nil, starLevel: Int? = nil) {
+    init(levelTestMode: Bool = false, dailyTestMode: Bool = false, placementMode: Bool = false, targetLevel: CEFRLevel? = nil, starLevel: Int? = nil) {
         self.levelTestMode = levelTestMode
         self.dailyTestMode = dailyTestMode
+        self.placementMode = placementMode
         self._targetLevel = State(initialValue: targetLevel ?? ProgressManager.shared.progress.currentLevel)
         self._starLevel = State(initialValue: starLevel)
-        self._isStarted = State(initialValue: levelTestMode || dailyTestMode || starLevel != nil)
+        self._isStarted = State(initialValue: levelTestMode || dailyTestMode || placementMode || starLevel != nil)
     }
 
     // MARK: Computed
+
+    /// Başka bir ekrandan pencere olarak açıldı mı (günlük test, seviye sınavı, seviye tespiti)?
+    /// Öyleyse geri/tamam pencereyi kapatır; yoksa (Alıştırmalar sekmesi) seviye seçimine döner.
+    private var isPresentedModally: Bool {
+        levelTestMode || dailyTestMode || placementMode
+    }
 
     private var progressFraction: Double {
         guard !questions.isEmpty else { return 0 }
@@ -93,7 +104,7 @@ struct QuizView: View {
             VStack(alignment: .leading, spacing: 24) {
                 Text("Alıştırmalar")
                     .font(.system(size: 32, weight: .bold, design: .rounded))
-                    .foregroundColor(.white)
+                    .foregroundColor(Theme.fg)
                     .padding(.top, 40)
 
                 ForEach(CEFRLevel.allCases) { level in
@@ -112,7 +123,7 @@ struct QuizView: View {
             HStack {
                 Text(level.description)
                     .font(.headline)
-                    .foregroundColor(isUnlocked ? Theme.textSecondary : .white.opacity(0.4))
+                    .foregroundColor(isUnlocked ? Theme.textSecondary : Theme.fg.opacity(0.4))
                 
                 Spacer()
                 
@@ -123,10 +134,10 @@ struct QuizView: View {
                         Text("Kilitli")
                             .font(.caption.bold())
                     }
-                    .foregroundColor(.white.opacity(0.4))
+                    .foregroundColor(Theme.fg.opacity(0.4))
                     .padding(.horizontal, 8)
                     .padding(.vertical, 4)
-                    .background(Capsule().fill(Color.white.opacity(0.06)))
+                    .background(Capsule().fill(Theme.fg.opacity(0.06)))
                 }
             }
 
@@ -159,7 +170,7 @@ struct QuizView: View {
             VStack(spacing: 4) {
                 ZStack {
                     Circle()
-                        .fill(isSubLevelUnlocked ? (isAchieved ? Color.yellow.opacity(0.15) : Color.white.opacity(0.08)) : Color.white.opacity(0.03))
+                        .fill(isSubLevelUnlocked ? (isAchieved ? Color.yellow.opacity(0.15) : Theme.fg.opacity(0.08)) : Theme.fg.opacity(0.03))
                         .frame(width: 44, height: 44)
                         .overlay(
                             Circle()
@@ -174,18 +185,18 @@ struct QuizView: View {
                         } else {
                             Text("\(star)")
                                 .font(.system(size: 14, weight: .bold, design: .rounded))
-                                .foregroundColor(.white)
+                                .foregroundColor(Theme.fg)
                         }
                     } else {
                         Image(systemName: "lock.fill")
                             .font(.system(size: 14))
-                            .foregroundColor(.white.opacity(0.25))
+                            .foregroundColor(Theme.fg.opacity(0.25))
                     }
                 }
                 
                 Text("\(questionCount)S")
                     .font(.system(size: 9, weight: .bold))
-                    .foregroundColor(isSubLevelUnlocked ? .white.opacity(0.6) : .white.opacity(0.25))
+                    .foregroundColor(isSubLevelUnlocked ? Theme.fg.opacity(0.6) : Theme.fg.opacity(0.25))
             }
         }
         .disabled(!isSubLevelUnlocked)
@@ -200,11 +211,11 @@ struct QuizView: View {
             Text(levelTestMode
                  ? "\(targetLevel.rawValue) seviyesinde yeterli kelime yok."
                  : "Bu seviyede yeterli kelime yok. Lütfen başka bir seviye seç.")
-                .foregroundColor(.white)
+                .foregroundColor(Theme.fg)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 32)
             Button("Geri") {
-                if levelTestMode { dismiss() }
+                if isPresentedModally { dismiss() }
                 else { withAnimation { isStarted = false } }
             }
             .buttonStyle(.borderedProminent)
@@ -215,12 +226,12 @@ struct QuizView: View {
     private var quizHeader: some View {
         HStack {
             Button(action: {
-                if levelTestMode { dismiss() }
+                if isPresentedModally { dismiss() }
                 else { withAnimation { isStarted = false } }
             }) {
-                Image(systemName: "chevron.left")
+                Image(systemName: isPresentedModally ? "xmark" : "chevron.left")
                     .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(.white)
+                    .foregroundColor(Theme.fg)
                     .padding(10)
                     .background(Circle().fill(.ultraThinMaterial))
             }
@@ -228,9 +239,9 @@ struct QuizView: View {
             Spacer()
 
             VStack(spacing: 2) {
-                Text(dailyTestMode ? "Günlük Test 🎯" : levelTestMode ? "\(targetLevel.rawValue) Seviye Sınavı" : "\(targetLevel.rawValue) - \(starLevel ?? 1) Yıldız")
+                Text(placementMode ? "Seviye Tespit Testi" : dailyTestMode ? "Günlük Test 🎯" : levelTestMode ? "\(targetLevel.rawValue) Seviye Sınavı" : "\(targetLevel.rawValue) - \(starLevel ?? 1) Yıldız")
                     .font(.headline)
-                    .foregroundColor(.white)
+                    .foregroundColor(Theme.fg)
                 Text("Soru \(min(currentIndex + 1, questions.count))/\(questions.count)")
                     .font(.caption)
                     .foregroundColor(Theme.textSecondary)
@@ -252,7 +263,7 @@ struct QuizView: View {
         GeometryReader { geo in
             ZStack(alignment: .leading) {
                 RoundedRectangle(cornerRadius: 4)
-                    .fill(Color.white.opacity(0.1))
+                    .fill(Theme.fg.opacity(0.1))
                     .frame(height: 6)
                 RoundedRectangle(cornerRadius: 4)
                     .fill(
@@ -277,7 +288,7 @@ struct QuizView: View {
 
             Text(questions[currentIndex].prompt)
                 .font(.title3.weight(.semibold))
-                .foregroundColor(.white)
+                .foregroundColor(Theme.fg)
                 .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
         }
@@ -295,7 +306,7 @@ struct QuizView: View {
                     HStack {
                         Text(choice)
                             .font(.body.weight(.medium))
-                            .foregroundColor(.white)
+                            .foregroundColor(Theme.fg)
                             .fixedSize(horizontal: false, vertical: true)
                         Spacer()
                         if showFeedback {
@@ -336,7 +347,7 @@ struct QuizView: View {
                 VStack(spacing: 8) {
                     Text(scoreEmoji)
                         .font(.system(size: 70))
-                    Text(dailyTestMode ? "Günlük Test" : "\(targetLevel.rawValue) \(starLevel != nil ? "- \(starLevel!) Yıldız" : "Sınav")")
+                    Text(placementMode ? "Seviyen: \(placedLevel?.rawValue ?? "A1")" : dailyTestMode ? "Günlük Test" : "\(targetLevel.rawValue) \(starLevel != nil ? "- \(starLevel!) Yıldız" : "Sınav")")
                         .font(.system(size: 16, weight: .bold))
                         .foregroundColor(.white)
                         .padding(.horizontal, 16)
@@ -347,7 +358,7 @@ struct QuizView: View {
                 // Score Circle
                 ZStack {
                     Circle()
-                        .stroke(Color.white.opacity(0.1), lineWidth: 12)
+                        .stroke(Theme.fg.opacity(0.1), lineWidth: 12)
                         .frame(width: 140, height: 140)
                     Circle()
                         .trim(from: 0, to: CGFloat(scorePercent) / 100)
@@ -360,7 +371,7 @@ struct QuizView: View {
                     VStack(spacing: 4) {
                         Text("%\(scorePercent)")
                             .font(.system(size: 36, weight: .bold, design: .rounded))
-                            .foregroundColor(.white)
+                            .foregroundColor(Theme.fg)
                         Text("\(score)/\(questions.count)")
                             .font(.subheadline)
                             .foregroundColor(Theme.textSecondary)
@@ -371,7 +382,7 @@ struct QuizView: View {
                 VStack(spacing: 8) {
                     Text(resultTitle)
                         .font(.title2.bold())
-                        .foregroundColor(.white)
+                        .foregroundColor(Theme.fg)
                     Text(resultMessage)
                         .font(.body)
                         .foregroundColor(Theme.textSecondary)
@@ -383,7 +394,7 @@ struct QuizView: View {
                 VStack(spacing: 12) {
                     Button {
                         showResult = false
-                        if levelTestMode && scorePercent >= 70 {
+                        if isPresentedModally {
                             dismiss()
                         } else {
                             withAnimation { isStarted = false }
@@ -397,12 +408,12 @@ struct QuizView: View {
                     .buttonStyle(.borderedProminent)
                     .padding(.horizontal, 24)
 
-                    if scorePercent < 70 {
+                    if scorePercent < 70 && !placementMode && !dailyTestMode {  // günlük test günde bir kez
                         Button("Tekrar Dene") {
                             showResult = false
                             startQuiz()
                         }
-                        .foregroundColor(.white)
+                        .foregroundColor(Theme.fg)
                     }
                 }
 
@@ -414,7 +425,10 @@ struct QuizView: View {
     // MARK: - Logic
 
     private func startQuiz() {
-        if dailyTestMode {
+        placementCorrect = [:]
+        if placementMode {
+            questions = QuizManager.shared.generatePlacementTest()
+        } else if dailyTestMode {
             questions = QuizManager.shared.generateDailyTest(for: targetLevel)
         } else {
             questions = QuizManager.shared.generateQuiz(
@@ -435,9 +449,14 @@ struct QuizView: View {
         selectedChoice = choice
         showFeedback = true
 
-        if choice == questions[currentIndex].correctAnswer {
+        let question = questions[currentIndex]
+        let isCorrect = choice == question.correctAnswer
+        if isCorrect {
             score += 1
+            placementCorrect[question.word.level, default: 0] += 1
         }
+        // Her cevap kelimenin hafıza durumunu günceller (FSRS)
+        MemoryStore.shared.record(wordID: question.word.id, grade: isCorrect ? .good : .again)
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
             selectedChoice = nil
@@ -452,6 +471,17 @@ struct QuizView: View {
     }
 
     private func completeQuiz() {
+        if placementMode {
+            // Seviye başına 5 sorudan en az 4'ünü bilen o seviyeyi geçer; ilk geçilemeyen seviyeden başlanır
+            let passMark = QuizManager.placementQuestionsPerLevel - 1
+            let placed = CEFRLevel.allCases.first { (placementCorrect[$0] ?? 0) < passMark } ?? .b2
+            placedLevel = placed
+            ProgressManager.shared.applyPlacement(level: placed)
+            UserDefaults.standard.set(true, forKey: "placementDone")
+            WidgetCenter.shared.reloadAllTimelines()
+            showResult = true
+            return
+        }
         if dailyTestMode {
             ProgressManager.shared.completeDailyTest()
         } else if levelTestMode {
@@ -471,17 +501,17 @@ struct QuizView: View {
     // MARK: - Styling Helpers
 
     private func choiceBackground(_ choice: String) -> Color {
-        guard showFeedback else { return Color.white.opacity(0.08) }
+        guard showFeedback else { return Theme.fg.opacity(0.08) }
         if choice == questions[currentIndex].correctAnswer { return Theme.correct.opacity(0.2) }
         if selectedChoice == choice { return Theme.wrong.opacity(0.2) }
-        return Color.white.opacity(0.05)
+        return Theme.fg.opacity(0.05)
     }
 
     private func choiceBorder(_ choice: String) -> Color {
-        guard showFeedback else { return Color.white.opacity(0.12) }
+        guard showFeedback else { return Theme.fg.opacity(0.12) }
         if choice == questions[currentIndex].correctAnswer { return Theme.correct }
         if selectedChoice == choice { return Theme.wrong }
-        return Color.white.opacity(0.08)
+        return Theme.fg.opacity(0.08)
     }
 
     private var scoreEmoji: String {
@@ -494,6 +524,9 @@ struct QuizView: View {
     }
 
     private var resultTitle: String {
+        if placementMode {
+            return "Seviyen: \(placedLevel?.rawValue ?? "A1")"
+        }
         if dailyTestMode {
             return "Günlük Test Tamamlandı!"
         }
@@ -504,6 +537,13 @@ struct QuizView: View {
     }
 
     private var resultMessage: String {
+        if placementMode {
+            let placed = placedLevel ?? .a1
+            if let previous = placed.previous {
+                return "\(previous.rawValue) ve altındaki kelimeleri zaten biliyorsun. \(placed.rawValue) seviyesinden başlıyorsun!"
+            }
+            return "A1 seviyesinden, en temel kelimelerle başlıyorsun. Hadi başlayalım!"
+        }
         if dailyTestMode {
             return "Harika! Bugünün pratik hedefini tamamladın. Yarın görüşmek üzere!"
         }

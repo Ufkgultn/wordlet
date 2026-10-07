@@ -51,7 +51,7 @@ struct PremiumPaywallView: View {
                         } label: {
                             Image(systemName: "xmark.circle.fill")
                                 .font(.system(size: 28))
-                                .foregroundColor(.white.opacity(0.4))
+                                .foregroundColor(Theme.fg.opacity(0.4))
                         }
                         .padding(.trailing, 20)
                         .padding(.top, 10)
@@ -66,18 +66,18 @@ struct PremiumPaywallView: View {
                             
                             Image(systemName: "crown.fill")
                                 .font(.system(size: 44))
-                                .foregroundColor(.yellow)
+                                .foregroundColor(Theme.gold)
                                 .shadow(color: .yellow.opacity(0.5), radius: 10, x: 0, y: 4)
                         }
                         
                         Text("Vocab Daily Premium")
                             .font(.system(size: 32, weight: .bold, design: .rounded))
-                            .foregroundColor(.white)
+                            .foregroundColor(Theme.fg)
                             .multilineTextAlignment(.center)
                         
                         Text("Kelime haznenizi sınırsızca genişletin, widget deneyiminizi özelleştirin.")
                             .font(.subheadline)
-                            .foregroundColor(.white.opacity(0.7))
+                            .foregroundColor(Theme.fg.opacity(0.7))
                             .multilineTextAlignment(.center)
                             .padding(.horizontal, 32)
                     }
@@ -85,7 +85,7 @@ struct PremiumPaywallView: View {
                     // Özellik Listesi
                     VStack(alignment: .leading, spacing: 16) {
                         featureRow(icon: "rectangle.3.group.bubble.fill", color: Theme.accent, title: "Sınırsız Widget Değişikliği", subtitle: "Widget üzerindeki butona basarak anında yeni kelimeye geçin.")
-                        featureRow(icon: "bolt.fill", color: .yellow, title: "Tüm CEFR Seviyeleri", subtitle: "A1'den C2'ye kadar olan tüm kelime listelerine erişim sağlayın.")
+                        featureRow(icon: "bolt.fill", color: .yellow, title: "Tüm CEFR Seviyeleri", subtitle: "A1'den B2'ye kadar olan tüm kelime listelerine erişim sağlayın.")
                         featureRow(icon: "speaker.wave.3.fill", color: .cyan, title: "Detaylı Telaffuzlar", subtitle: "Örnek cümlelerin doğru telaffuzlarını dinleyin.")
                         featureRow(icon: "graduationcap.fill", color: .purple, title: "İlerleme Raporları", subtitle: "Öğrendiğiniz kelimelerin detaylı analizini takip edin.")
                     }
@@ -121,14 +121,16 @@ struct PremiumPaywallView: View {
                     }
                     .padding(.horizontal, 20)
                     
-                    // StoreKit Simülasyon Durumu Uyarısı
+                    // StoreKit Simülasyon Durumu Uyarısı (sadece geliştirici build'i; kullanıcıya gösterilmez)
+                    #if DEBUG
                     if storeManager.products.isEmpty {
                         Text("⚠️ StoreKit Simülasyonu Aktif Değil\n(Xcode şemasından Products.storekit seçilmediği için sanal ödeme ekranı açılmaz, doğrudan premium yapılır.)")
                             .font(.system(size: 11, weight: .semibold))
-                            .foregroundColor(.yellow.opacity(0.8))
+                            .foregroundColor(Theme.gold.opacity(0.8))
                             .multilineTextAlignment(.center)
                             .padding(.horizontal, 24)
                     }
+                    #endif
                     
                     // Hata Mesajı
                     if let errorMsg = storeManager.purchaseError {
@@ -150,7 +152,7 @@ struct PremiumPaywallView: View {
                                 Spacer()
                                 if storeManager.isLoading {
                                     ProgressView()
-                                        .tint(.white)
+                                        .tint(Theme.gradientStart)
                                 } else {
                                     Text("Premium Üyeliği Başlat")
                                         .font(.headline.bold())
@@ -175,17 +177,20 @@ struct PremiumPaywallView: View {
                                 }
                             }
                             
+                            #if DEBUG
+                            // Sadece geliştirme build'lerinde: release'te premium bedava açılamasın
                             Text("•")
-                                .foregroundColor(.white.opacity(0.3))
+                                .foregroundColor(Theme.fg.opacity(0.3))
                             
                             Button("Simülatör Premium Testi") {
                                 storeManager.toggleDebugPremium()
                                 UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                                 dismiss()
                             }
+                            #endif
                         }
                         .font(.footnote.bold())
-                        .foregroundColor(.white.opacity(0.6))
+                        .foregroundColor(Theme.fg.opacity(0.6))
                     }
                     
                     // Yasal Uyarı Metinleri
@@ -194,14 +199,13 @@ struct PremiumPaywallView: View {
                         Text("Kullanım Koşulları & Gizlilik Politikası geçerlidir.")
                     }
                     .font(.system(size: 10))
-                    .foregroundColor(.white.opacity(0.4))
+                    .foregroundColor(Theme.fg.opacity(0.4))
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 32)
                     .padding(.bottom, 24)
                 }
             }
         }
-        .preferredColorScheme(.dark)
     }
     
     // MARK: - Row Helper
@@ -218,10 +222,10 @@ struct PremiumPaywallView: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(title)
                     .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(.white)
+                    .foregroundColor(Theme.fg)
                 Text(subtitle)
                     .font(.system(size: 13))
-                    .foregroundColor(.white.opacity(0.6))
+                    .foregroundColor(Theme.fg.opacity(0.6))
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
@@ -243,12 +247,12 @@ struct PremiumPaywallView: View {
                 // Seçim Dairesi
                 ZStack {
                     Circle()
-                        .stroke(isSelected ? Color.yellow : Color.white.opacity(0.3), lineWidth: 2)
+                        .stroke(isSelected ? Theme.gold : Theme.fg.opacity(0.3), lineWidth: 2)
                         .frame(width: 22, height: 22)
                     
                     if isSelected {
                         Circle()
-                            .fill(Color.yellow)
+                            .fill(Theme.gold)
                             .frame(width: 12, height: 12)
                     }
                 }
@@ -257,7 +261,7 @@ struct PremiumPaywallView: View {
                     HStack(alignment: .center, spacing: 8) {
                         Text(title)
                             .font(.system(size: 18, weight: .bold))
-                            .foregroundColor(.white)
+                            .foregroundColor(Theme.fg)
                         
                         if !badge.isEmpty {
                             Text(badge)
@@ -271,7 +275,7 @@ struct PremiumPaywallView: View {
                     
                     Text(desc)
                         .font(.system(size: 12))
-                        .foregroundColor(.white.opacity(0.6))
+                        .foregroundColor(Theme.fg.opacity(0.6))
                         .multilineTextAlignment(.leading)
                         .fixedSize(horizontal: false, vertical: true)
                 }
@@ -280,16 +284,16 @@ struct PremiumPaywallView: View {
                 
                 Text(price)
                     .font(.system(size: 20, weight: .black))
-                    .foregroundColor(isSelected ? .yellow : .white)
+                    .foregroundColor(isSelected ? Theme.gold : Theme.fg)
             }
             .padding(18)
             .background(
                 RoundedRectangle(cornerRadius: 18)
-                    .fill(isSelected ? Color.white.opacity(0.08) : Color.white.opacity(0.03))
+                    .fill(isSelected ? Theme.fg.opacity(0.08) : Theme.fg.opacity(0.03))
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 18)
-                    .stroke(isSelected ? Color.yellow.opacity(0.5) : Color.clear, lineWidth: 1.5)
+                    .stroke(isSelected ? Theme.gold.opacity(0.5) : Color.clear, lineWidth: 1.5)
             )
         }
         .buttonStyle(.plain)
@@ -307,10 +311,18 @@ struct PremiumPaywallView: View {
                 }
             }
         } else {
+            #if DEBUG
             // StoreKit bağlı değilse yerel debug premium modunu aktifleştir (Simulator test kolaylığı)
             AppSettingsManager.shared.isPremium = true
             WidgetCenter.shared.reloadAllTimelines()
             dismiss()
+            #else
+            // Ürünler yüklenemediyse premium'u bedava açma; tekrar yüklemeyi dene
+            await storeManager.loadProducts()
+            if storeManager.products.isEmpty {
+                storeManager.purchaseError = "Ürünler şu an yüklenemedi. İnternet bağlantını kontrol edip tekrar dene."
+            }
+            #endif
         }
     }
 }

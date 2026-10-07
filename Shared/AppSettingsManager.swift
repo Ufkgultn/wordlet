@@ -148,6 +148,8 @@ public final class ProgressManager {
     private init() {
         self.defaults = UserDefaults(suiteName: "group.com.ufuk.DailyWordWidget") ?? .standard
         migrateIfNeeded()
+        let p = progress
+        MemoryStore.shared.migrateIfNeeded(known: p.knownWordIDs, unknown: p.unknownWordIDs)
     }
 
     // MARK: Progress
@@ -235,6 +237,8 @@ public final class ProgressManager {
     // MARK: - Swipe Logic
     
     public func swipeRight(wordID: String) {
+        // "Biliyorum": uzun aralıkla tekrara girer (FSRS easy)
+        MemoryStore.shared.record(wordID: wordID, grade: .easy)
         var p = progress
         // Biliniyor listesine ekle
         if !p.knownWordIDs.contains(wordID) {
@@ -253,6 +257,8 @@ public final class ProgressManager {
     }
     
     public func swipeLeft(wordID: String) {
+         // "Bilmiyorum": kısa süre sonra tekrar gösterilir
+         MemoryStore.shared.record(wordID: wordID, grade: .again)
          var p = progress
          // Bilinmiyor listesine ekle
          if !p.unknownWordIDs.contains(wordID) {
@@ -299,16 +305,39 @@ public final class ProgressManager {
         progress.dailyTestsCompleted[level.rawValue] ?? 0
     }
     
+    /// Seviye tespit sonucu: verilen seviyeye kadar tüm seviyeleri aç ve oradan başlat
+    public func applyPlacement(level: CEFRLevel) {
+        var p = progress
+        for l in CEFRLevel.allCases.prefix(through: CEFRLevel.allCases.firstIndex(of: level) ?? 0)
+        where !p.unlockedLevels.contains(l) {
+            p.unlockedLevels.append(l)
+        }
+        p.currentLevel = level
+        progress = p
+        NotificationCenter.default.post(name: .progressDidChange, object: nil)
+    }
+
+    /// Kullanıcının hiç ilerlemesi yok mu (seviye tespit testi sadece yeni kullanıcılara sorulur)
+    public var isFreshUser: Bool {
+        let p = progress
+        return p.quizScores.isEmpty && p.knownWordIDs.isEmpty && p.unknownWordIDs.isEmpty
+            && p.dailyTestsCompleted.isEmpty && !MemoryStore.shared.hasData && p.unlockedLevels == [.a1]
+    }
+
+    /// Sınav hakkı için seviyedeki kelimelerin bu kadarı "öğrenilmiş" (FSRS: tekrarda, ≥7 gün) olmalı
+    public static let masteryRatio = 0.8
+
+    public func masteredCount(for level: CEFRLevel) -> Int {
+        MemoryStore.shared.masteredCount(among: Set(WordManager.shared.words(for: level).map { $0.id }))
+    }
+
+    public func requiredMasteredCount(for level: CEFRLevel) -> Int {
+        Int((Double(WordManager.shared.words(for: level).count) * Self.masteryRatio).rounded(.up))
+    }
+
     public func canTakeExam(for level: CEFRLevel) -> Bool {
-        guard level != .a1 else { return false }
         guard let sourceLevel = level.previous else { return false }
-        
-        let levelWords = WordManager.shared.words(for: sourceLevel).map { $0.id }
-        // User request: "tüm kelimeler bittikten sonra" (after all words are finished)
-        // We check if learned/known words for the level is equal to all words in that level.
-        let knownLevelWordsCount = progress.learnedWordIDs.filter { levelWords.contains($0) }.count
-        
-        return knownLevelWordsCount >= levelWords.count
+        return masteredCount(for: sourceLevel) >= requiredMasteredCount(for: sourceLevel)
     }
 
     // MARK: Migration

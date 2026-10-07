@@ -38,11 +38,11 @@ struct SpeedQuizBattleView: View {
                         VStack(spacing: 30) {
                             Text("Doğru Anlamı Seç!")
                                 .font(.caption.bold())
-                                .foregroundColor(Theme.accent)
+                                .foregroundColor(Theme.accentText)
                             
                             Text(words[currentIndex].english)
                                 .font(.system(size: 38, weight: .black, design: .rounded))
-                                .foregroundColor(.white)
+                                .foregroundColor(Theme.fg)
                                 .multilineTextAlignment(.center)
                             
                             VStack(spacing: 12) {
@@ -50,12 +50,12 @@ struct SpeedQuizBattleView: View {
                                     Button(action: { checkAnswer(opt) }) {
                                         Text(opt)
                                             .font(.headline)
-                                            .foregroundColor(.white)
+                                            .foregroundColor(Theme.fg)
                                             .frame(maxWidth: .infinity)
                                             .padding(.vertical, 16)
-                                            .background(Color.white.opacity(0.1))
+                                            .background(Theme.fg.opacity(0.1))
                                             .cornerRadius(12)
-                                            .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.white.opacity(0.2), lineWidth: 1))
+                                            .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.fg.opacity(0.2), lineWidth: 1))
                                     }
                                 }
                             }
@@ -133,9 +133,9 @@ struct SpeedQuizBattleView: View {
     // Boilerplate code
     private var headerView: some View {
         HStack {
-            Button(action: { cleanup(); dismiss() }) { Image(systemName: "xmark").font(.headline).foregroundColor(.white).padding(12).background(Circle().fill(Color.white.opacity(0.1))) }
+            Button(action: { cleanup(); dismiss() }) { Image(systemName: "xmark").font(.headline).foregroundColor(Theme.fg).padding(12).background(Circle().fill(Theme.fg.opacity(0.1))) }
             Spacer()
-            Text(isRobot ? "Robot Seviye \(robotLevel)" : "Hızlı Seçim").font(.headline.bold()).foregroundColor(.white)
+            Text(isRobot ? "Robot Seviye \(robotLevel)" : "Hızlı Seçim").font(.headline.bold()).foregroundColor(Theme.fg)
             Spacer()
             Text("\(timeRemaining)s").font(.system(size: 16, weight: .bold, design: .monospaced)).foregroundColor(.orange).padding(.horizontal, 12).padding(.vertical, 6).background(Capsule().fill(Color.orange.opacity(0.15)))
         }.padding(.horizontal).padding(.top, 10)
@@ -143,35 +143,28 @@ struct SpeedQuizBattleView: View {
     
     private var scoreBoard: some View {
         HStack(spacing: 16) {
-            VStack(alignment: .leading, spacing: 6) { Text("Sen").font(.caption).foregroundColor(.white.opacity(0.6)); Text("\(userMatches)").font(.title3.bold()).foregroundColor(.green) }.padding(12).frame(maxWidth: .infinity).background(Color.white.opacity(0.06)).cornerRadius(12)
-            VStack(alignment: .leading, spacing: 6) { Text(opponentName).font(.caption).foregroundColor(.white.opacity(0.6)); Text("\(opponentMatches)").font(.title3.bold()).foregroundColor(.red) }.padding(12).frame(maxWidth: .infinity).background(Color.white.opacity(0.06)).cornerRadius(12)
+            VStack(alignment: .leading, spacing: 6) { Text("Sen").font(.caption).foregroundColor(Theme.fg.opacity(0.6)); Text("\(userMatches)").font(.title3.bold()).foregroundColor(.green) }.padding(12).frame(maxWidth: .infinity).background(Theme.fg.opacity(0.06)).cornerRadius(12)
+            VStack(alignment: .leading, spacing: 6) { Text(opponentName).font(.caption).foregroundColor(Theme.fg.opacity(0.6)); Text("\(opponentMatches)").font(.title3.bold()).foregroundColor(.red) }.padding(12).frame(maxWidth: .infinity).background(Theme.fg.opacity(0.06)).cornerRadius(12)
         }.padding(.horizontal)
     }
     
     private func cleanup() { timer?.invalidate(); timer = nil; opponentTimer?.invalidate(); opponentTimer = nil; if !isRobot { matchManager.resetMatch() } }
     
     private func endGame() {
+        if !isRobot { matchManager.finishMatch(score: userMatches) }
         cleanup()
         withAnimation {
             if userMatches > opponentMatches {
-                gameState = .won; earnedXP = isRobot ? (15 + robotLevel * 2) : 50
-                if isRobot {
-                    let key = "robotDuelLevel_\(activeCEFRLevel.rawValue)"
-                    let currentLevel = UserDefaults.standard.integer(forKey: key)
-                    let stored = currentLevel == 0 ? 1 : currentLevel
-                    if robotLevel == stored {
-                        UserDefaults.standard.set(min(30, stored + 1), forKey: key)
-                    }
-                }
-                Task { await SocialManager.shared.recordDuelWin(xpGained: earnedXP, isWin: true) }
+                gameState = .won; earnedXP = isRobot ? 20 : 50
+                if isRobot { RobotArenaProgress.recordWin(level: activeCEFRLevel, robotLevel: robotLevel) }
+                if isRobot { Task { await SocialManager.shared.recordBotDuel(won: true) } }
             } else if userMatches < opponentMatches {
                 gameState = .lost; earnedXP = isRobot ? 5 : 15
-                Task { await SocialManager.shared.recordDuelWin(xpGained: earnedXP, isWin: false) }
+                if isRobot { Task { await SocialManager.shared.recordBotDuel(won: false) } }
             } else {
-                gameState = .draw; earnedXP = isRobot ? 8 : 25
-                Task { await SocialManager.shared.recordDuelWin(xpGained: earnedXP, isWin: false) }
+                gameState = .draw; earnedXP = isRobot ? 5 : 25
+                if isRobot { Task { await SocialManager.shared.recordBotDuel(won: false) } }
             }
-            if !isRobot, let myId = SocialManager.shared.myProfile?.id { Task { await matchManager.sendMatchFinished(winnerId: myId) } }
         }
     }
     
@@ -179,8 +172,8 @@ struct SpeedQuizBattleView: View {
         VStack(spacing: 24) {
             Spacer()
             Text(gameState == .won ? "🏆" : (gameState == .lost ? "💔" : "🤝")).font(.system(size: 80))
-            Text(gameState == .won ? "Kazandın!" : (gameState == .lost ? "Kaybettin!" : "Berabere!")).font(.largeTitle.bold()).foregroundColor(.white)
-            Text("Sen: \(userMatches) - \(opponentName): \(opponentMatches)").font(.headline).foregroundColor(.white.opacity(0.8))
+            Text(gameState == .won ? "Kazandın!" : (gameState == .lost ? "Kaybettin!" : "Berabere!")).font(.largeTitle.bold()).foregroundColor(Theme.fg)
+            Text("Sen: \(userMatches) - \(opponentName): \(opponentMatches)").font(.headline).foregroundColor(Theme.fg.opacity(0.8))
             if earnedXP > 0 { Text("+\(earnedXP) XP").font(.title3.bold()).foregroundColor(.yellow) }
             Spacer()
             Button(action: { dismiss() }) { Text("Kapat").font(.headline).foregroundColor(.white).frame(maxWidth: .infinity).padding().background(RoundedRectangle(cornerRadius: 16).fill(Color.blue)).padding(.horizontal, 24) }.padding(.bottom, 20)

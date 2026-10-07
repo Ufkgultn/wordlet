@@ -86,10 +86,17 @@ public class QuizManager {
         let direction: QuizDirection = Bool.random() ? .englishToTurkish : .turkishToEnglish
 
         let correct = direction == .englishToTurkish ? word.turkish : word.english
-        var wrongPool = distractorPool
-            .filter { $0.id != word.id }
-            .map { direction == .englishToTurkish ? $0.turkish : $0.english }
-            .filter { $0 != correct }
+        let answers: ([Word]) -> [String] = { pool in
+            Array(Set(pool
+                .filter { $0.id != word.id }
+                .map { direction == .englishToTurkish ? $0.turkish : $0.english }
+                .filter { $0 != correct }))
+        }
+        // Yanlış şıklar aynı kelime türünden olsun (fiile fiil, isme isim); yetmezse tüm havuz
+        var wrongPool = answers(distractorPool.filter { word.pos != nil && $0.pos == word.pos })
+        if wrongPool.count < 3 {
+            wrongPool = answers(distractorPool)
+        }
 
         guard wrongPool.count >= 3 else { return nil }
         wrongPool.shuffle()
@@ -104,43 +111,58 @@ public class QuizManager {
         )
     }
     
+    /// Seviye tespit testi: her seviyeden, o seviyenin en yaygın 150 kelimesi arasından 5 soru
+    public static let placementQuestionsPerLevel = 5
+
+    public func generatePlacementTest() -> [QuizQuestion] {
+        CEFRLevel.allCases.flatMap { level -> [QuizQuestion] in
+            let levelWords = WordManager.shared.words(for: level)
+            let common = levelWords
+                .sorted { ($0.freqRank ?? Int.max) < ($1.freqRank ?? Int.max) }
+                .prefix(150)
+            return common.shuffled()
+                .prefix(Self.placementQuestionsPerLevel)
+                .compactMap { makeQuestion(for: $0, distractorPool: levelWords) }
+        }
+    }
+
+    /// Günlük test: önce tekrar zamanı gelenler, sonra öğrenilmekte olanlar, sonra 4-5 yeni kelime
+    /// (en yaygından başlayarak). Eksik kalırsa en zayıf hatırlanan kelimelerle tamamlanır.
     public func generateDailyTest(for level: CEFRLevel) -> [QuizQuestion] {
         let allLevelWords = WordManager.shared.words(for: level)
-        
-        let knownIDs = Set(ProgressManager.shared.progress.knownWordIDs)
-        let unknownIDs = Set(ProgressManager.shared.progress.unknownWordIDs)
-        
-        let knownWords = allLevelWords.filter { knownIDs.contains($0.id) }
-        var unknownWords = allLevelWords.filter { unknownIDs.contains($0.id) }
-        
+        let byId = Dictionary(uniqueKeysWithValues: allLevelWords.map { ($0.id, $0) })
+        let memory = MemoryStore.shared.all
         let totalCount = 20
-        var unknownCount = max(2, totalCount / 10) // %10, en az 2
-        var knownCount = totalCount - unknownCount   // %90
-        
-        // Elimizde yeterince bilinmeyen yoksa, eksiği bilinenlerle tamamla
-        if unknownWords.count < unknownCount {
-            unknownCount = unknownWords.count
-            knownCount = totalCount - unknownCount
+        let maxReview = 15
+        let newCount = 5
+
+        var picked: [Word] = []
+        var used = Set<String>()
+        func take(_ words: [Word], upTo limit: Int) {
+            for w in words where picked.count < limit && !used.contains(w.id) {
+                picked.append(w)
+                used.insert(w.id)
+            }
         }
-        
-        // Elimizde yeterince bilinen yoksa, eksiği bilinmeyenlerle tamamla
-        if knownWords.count < knownCount {
-            knownCount = knownWords.count
-            unknownCount = totalCount - knownCount
-            
-            // Hala yetmiyorsa, diğer kelimelerden rastgele seç
-             if unknownWords.count < unknownCount {
-                 let otherWords = allLevelWords.filter { !knownIDs.contains($0.id) && !unknownIDs.contains($0.id) }
-                 unknownWords.append(contentsOf: otherWords)
-             }
-        }
-        
-        let selectedKnown = knownWords.shuffled().prefix(knownCount)
-        let selectedUnknown = unknownWords.shuffled().prefix(unknownCount)
-        
-        let combined = (Array(selectedKnown) + Array(selectedUnknown)).shuffled()
-        
-        // Distractor pool olarak tüm seviye kelimelerini ver
-        return combined.compactMap { makeQuestion(for: $0, distractorPool: allLevelWords) }
+
+        let due = MemoryStore.shared.dueWordIDs(among: Set(byId.keys)).compactMap { byId[$0] }
+        take(due, upTo: maxReview)
+
+        let learning = allLevelWords.filter { memory[$0.id]?.state == .learning }
+        take(learning, upTo: maxReview)
+
+        let fresh = allLevelWords
+            .filter { memory[$0.id] == nil }
+            .sorted { ($0.freqRank ?? Int.max) < ($1.freqRank ?? Int.max) }
+        take(fresh, upTo: picked.count + newCount)
+
+        // Hâlâ eksikse: en düşük stabiliteli (en kolay unutulacak) kelimeler
+        let weakest = allLevelWords
+            .filter { memory[$0.id].map { $0.state == .review } ?? false }
+            .sorted { (memory[$0.id]?.stability ?? 0) < (memory[$1.id]?.stability ?? 0) }
+        take(weakest, upTo: totalCount)
+        take(fresh, upTo: totalCount)
+
+        return picked.shuffled().compactMap { makeQuestion(for: $0, distractorPool: allLevelWords) }
     }
 }
