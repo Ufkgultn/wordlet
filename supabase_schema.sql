@@ -1,3 +1,6 @@
+-- NOT: Bu dosya ilk kurulum şemasıdır. Sonraki değişiklikler supabase/migrations/ altındadır
+-- ve bu dosyadan SONRA sırayla çalıştırılmalıdır (RLS / RPC / push güvenliği oradadır).
+
 -- 1. Create Profiles Table (extends auth.users)
 CREATE TABLE IF NOT EXISTS public.profiles (
     id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
