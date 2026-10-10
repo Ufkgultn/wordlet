@@ -97,7 +97,18 @@ struct TrueFalseBattleView: View {
         }
         .onAppear { setupGame() }
         .onDisappear { cleanup() }
+        .onChange(of: matchManager.lastMatchResult) { result in
+            // Kazananı ve kesin skorları sunucu belirler; yerel tahmini düzelt
+            guard let result, !isRobot, gameState != .playing else { return }
+            withAnimation {
+                userMatches = result.myScore
+                opponentMatches = result.opponentScore
+                gameState = result.draw ? .draw : (result.won ? .won : .lost)
+                earnedXP = result.draw ? 25 : (result.won ? 50 : 15)
+            }
+        }
         .onChange(of: matchManager.opponentLiveScore) { newScore in
+            guard gameState == .playing else { return } // resetMatch skoru 0'a çekince sonuç ekranı bozulmasın
             if !isRobot { withAnimation(.spring()) { self.opponentMatches = newScore } }
         }
         .onChange(of: matchManager.matchFinishedEventReceived) { finished in

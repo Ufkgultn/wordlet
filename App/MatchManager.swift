@@ -8,6 +8,8 @@ struct PlayerJoinedPayload: Codable {
     let player2Id: String
     let player2Name: String
     let player2Avatar: String
+    /// Maçın iki telefonda aynı anda başlaması için ortak başlangıç anı (epoch saniye)
+    let startAt: Double?
 }
 
 struct ScoreUpdatePayload: Codable {
@@ -17,6 +19,16 @@ struct ScoreUpdatePayload: Codable {
 
 struct MatchFinishedPayload: Codable {
     let userId: String
+    /// Son skor; bitirmeden hemen önceki score_update kaybolsa bile rakip doğru puanı görür
+    let score: Int?
+}
+
+/// Sunucunun belirlediği kesin maç sonucu (ekrandaki yerel tahmini düzeltmek için)
+public struct MatchResult: Equatable {
+    public let myScore: Int
+    public let opponentScore: Int
+    public let won: Bool
+    public let draw: Bool
 }
 
 @MainActor
@@ -33,6 +45,8 @@ public class MatchManager: ObservableObject {
     @Published public var opponentLiveScore: Int = 0
     @Published public var matchFinishedEventReceived: Bool = false
     @Published public var errorMessage: String? = nil
+    /// resetMatch bunu temizlemez; sonuç ekranı maç kapandıktan sonra da güncellenebilsin
+    @Published public var lastMatchResult: MatchResult? = nil
 
     private let client = SupabaseManager.shared.client
     private var realtimeChannel: RealtimeChannelV2? = nil
@@ -41,6 +55,8 @@ public class MatchManager: ObservableObject {
 
     /// Sunucu 3 dakikadan eski rastgele lobileri kapatıyor; istemci ondan önce vazgeçer.
     private let randomLobbyTimeout: TimeInterval = 150
+    /// Katılan oyuncu bu kadar sonrasını başlangıç ilan eder; yayın kurucuya bu sürede ulaşır
+    private let startDelay: TimeInterval = 2.5
 
     private init() {}
 
@@ -61,6 +77,7 @@ public class MatchManager: ObservableObject {
         opponentLiveScore = 0
         matchFinishedEventReceived = false
         errorMessage = nil
+        lastMatchResult = nil
 
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
 
@@ -229,6 +246,9 @@ public class MatchManager: ObservableObject {
     }
 
     private func enterJoinedMatch(_ joined: DuelMatch, as me: PublicProfile) async {
+        self.lastMatchResult = nil
+        self.opponentLiveScore = 0
+        self.matchFinishedEventReceived = false
         self.activeMatch = joined
         self.currentOpponent = PublicProfile(
             id: joined.player1Id,
@@ -241,25 +261,30 @@ public class MatchManager: ObservableObject {
 
         await connectToMatchChannel(matchId: joined.id)
 
+        let startAt = Date().addingTimeInterval(startDelay)
         try? await realtimeChannel?.broadcast(
             event: "player_joined",
             message: PlayerJoinedPayload(
                 player2Id: me.id,
                 player2Name: me.displayName,
-                player2Avatar: me.avatarEmoji
+                player2Avatar: me.avatarEmoji,
+                startAt: startAt.timeIntervalSince1970
             )
         )
 
-        self.isSearching = false
-        self.showBattleArena = true
+        searchStatus = "Rakip bulundu! Maç başlıyor..."
+        await openArena(at: startAt)
     }
 
     // MARK: - 4. Realtime Channel & Live Sync
 
     private func connectToMatchChannel(matchId: String) async {
         tearDownChannel()
+        lastMatchResult = nil
 
-        let channel = client.realtimeV2.channel("match_\(matchId)")
+        let channel = client.realtimeV2.channel("match_\(matchId)") {
+            $0.broadcast.acknowledgeBroadcasts = true // skor mesajları sunucuya ulaştığı teyit edilsin
+        }
         self.realtimeChannel = channel
 
         let joinedStream = channel.broadcastStream(event: "player_joined")
@@ -290,8 +315,9 @@ public class MatchManager: ObservableObject {
                 self.activeMatch?.player2Avatar = avatar
                 self.activeMatch?.status = "in_progress"
                 self.lobbyPollingTask?.cancel()
-                self.isSearching = false
-                self.showBattleArena = true
+                self.searchStatus = "Rakip bulundu! Maç başlıyor..."
+                let startAt = (payload?.startAt).map { Date(timeIntervalSince1970: $0) } ?? Date()
+                await self.openArena(at: startAt)
             }
         })
 
@@ -304,14 +330,22 @@ public class MatchManager: ObservableObject {
 
                 guard let self, let senderId, let score,
                       senderId != SocialManager.shared.myProfile?.id else { continue }
-                self.opponentLiveScore = score
+                // Mesajlar sırasız gelebilir; skor asla geri düşmesin
+                self.opponentLiveScore = max(self.opponentLiveScore, score)
             }
         })
 
         // Listen for game finished event
         channelListenerTasks.append(Task { [weak self] in
-            for await _ in finishedStream {
-                self?.matchFinishedEventReceived = true
+            for await message in finishedStream {
+                guard let self else { continue }
+                let payload = try? message.decode(as: MatchFinishedPayload.self)
+                let senderId = payload?.userId ?? message["userId"]?.stringValue
+                guard senderId != SocialManager.shared.myProfile?.id else { continue }
+                if let score = payload?.score ?? message["score"]?.intValue {
+                    self.opponentLiveScore = max(self.opponentLiveScore, score)
+                }
+                self.matchFinishedEventReceived = true
             }
         })
     }
@@ -347,7 +381,7 @@ public class MatchManager: ObservableObject {
 
         let client = self.client
         Task {
-            try? await channel?.broadcast(event: "match_finished", message: MatchFinishedPayload(userId: myId))
+            try? await channel?.broadcast(event: "match_finished", message: MatchFinishedPayload(userId: myId, score: score))
             if let channel { await client.realtimeV2.removeChannel(channel) }
 
             do {
@@ -362,6 +396,17 @@ public class MatchManager: ObservableObject {
                         .rpc("finalize_match", params: ["p_match_id": matchId])
                         .execute()
                         .value
+                }
+                if let final = result.first, final.status == "completed" {
+                    let amP1 = final.player1Id == myId
+                    await MainActor.run {
+                        self.lastMatchResult = MatchResult(
+                            myScore: amP1 ? final.player1Score : final.player2Score,
+                            opponentScore: amP1 ? final.player2Score : final.player1Score,
+                            won: final.winnerId == myId,
+                            draw: final.winnerId == nil
+                        )
+                    }
                 }
             } catch {
                 print("Submit match score error: \(error)")
@@ -414,8 +459,9 @@ public class MatchManager: ObservableObject {
                             avatarEmoji: current.player2Avatar ?? "⚡️"
                         )
                         self.activeMatch = current
-                        self.isSearching = false
-                        self.showBattleArena = true
+                        // Yayın kaçtıysa: katılım 0-2 sn önce oldu, rakip ~startDelay sonra başlıyor
+                        self.searchStatus = "Rakip bulundu! Maç başlıyor..."
+                        await self.openArena(at: Date().addingTimeInterval(self.startDelay - 1))
                         break
                     }
                 } catch {
@@ -423,6 +469,17 @@ public class MatchManager: ObservableObject {
                 }
             }
         }
+    }
+
+    /// İki telefonda arenayı aynı anda aç (zamanlayıcılar senkron başlasın)
+    private func openArena(at startAt: Date) async {
+        guard !showBattleArena else { return }
+        let wait = min(max(startAt.timeIntervalSinceNow, 0), 5) // saat farkına karşı üst sınır
+        if wait > 0 { try? await Task.sleep(nanoseconds: UInt64(wait * 1_000_000_000)) }
+        // Yoklama görevi iptal edildiyse (yayın daha önce geldi) açılışı yayın yolu yapar
+        guard !Task.isCancelled, activeMatch != nil, !showBattleArena else { return }
+        isSearching = false
+        showBattleArena = true
     }
 
     public func cancelSearch() {

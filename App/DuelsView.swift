@@ -149,6 +149,9 @@ struct DuelsView: View {
                 await socialManager.loadProfileAndFriends()
             }
         }
+        .onChange(of: mainSection) { section in
+            if section == 1 { Task { await socialManager.fetchLeaderboards() } }
+        }
         // Popups and full screens
         .fullScreenCover(isPresented: $matchManager.showBattleArena) {
             if let opp = matchManager.currentOpponent {
@@ -557,6 +560,13 @@ struct DuelsView: View {
             .pickerStyle(.segmented)
             .padding(.horizontal, 20)
             
+            // Liste arka planda sessizce yenilenir; ilk açılışta (önbellek yokken) sadece yükleniyor göstergesi
+            if list.isEmpty {
+                ProgressView()
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 30)
+            }
+
             // Top 3 Podium
             if list.count >= 3 {
                 leaderboardPodium(top3: Array(list.prefix(3)))

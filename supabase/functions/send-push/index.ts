@@ -37,6 +37,18 @@ async function getApnsJwt(keyId: string, teamId: string, privateKey: string): Pr
   return token;
 }
 
+// Secret panelden yapıştırılınca satır sonları kaybolabiliyor ("\n" yazısı, boşluk, tek satır).
+// Gövdeyi temizleyip 64 karakterlik satırlarla yeniden PEM'e sar; aksi halde jose
+// "InconsistentComponents" hatası veriyor.
+function normalizePem(raw: string): string {
+  const body = raw
+    .replace(/\\n/g, "\n")
+    .replace(/-----(BEGIN|END) PRIVATE KEY-----/g, "")
+    .replace(/["'\s]/g, "");
+  const lines = body.match(/.{1,64}/g) ?? [];
+  return `-----BEGIN PRIVATE KEY-----\n${lines.join("\n")}\n-----END PRIVATE KEY-----`;
+}
+
 // Sabit zamanlı karşılaştırma
 function safeEqual(a: string, b: string): boolean {
   if (a.length !== b.length) return false;
@@ -66,10 +78,7 @@ serve(async (req) => {
       return json({ error: "APNs secrets missing in Supabase environment" }, 500);
     }
 
-    // Normalizing private key formatting if newlines were lost
-    if (!privateKey.includes("-----BEGIN PRIVATE KEY-----")) {
-      privateKey = `-----BEGIN PRIVATE KEY-----\n${privateKey}\n-----END PRIVATE KEY-----`;
-    }
+    privateKey = normalizePem(privateKey);
 
     const payload: PushPayload = await req.json();
     if (!payload.recipient_user_id || !/^[0-9a-f-]{36}$/i.test(payload.recipient_user_id)) {

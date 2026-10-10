@@ -19,6 +19,8 @@ public class SocialManager: NSObject, ObservableObject, UNUserNotificationCenter
     @Published public var inAppNotificationMessage: String = ""
     
     private var pollingTask: Task<Void, Never>? = nil
+    /// Arkadaş listesi bu oturumda sunucudan en az bir kez geldi mi (gelmediyse kayıtlı sıralamayı koru)
+    private var friendsLoadedFromServer = false
     @Published public var globalLeaderboard: [PublicProfile] = []
     @Published public var errorMessage: String? = nil
     @Published public var isLoading: Bool = false
@@ -46,6 +48,9 @@ public class SocialManager: NSObject, ObservableObject, UNUserNotificationCenter
         if let local = loadLocalProfile() {
             self.myProfile = local
         }
+        // İnternet yokken de son kaydedilen sıralama görünsün
+        globalLeaderboard = loadCachedList(key: globalLeaderboardKey)
+        friendsLeaderboard = loadCachedList(key: friendsLeaderboardKey)
         requestNotificationPermission()
         // UNUserNotificationCenter delegate and request logic is now handled in AppDelegate
     }
@@ -92,6 +97,21 @@ public class SocialManager: NSObject, ObservableObject, UNUserNotificationCenter
         }
     }
     
+    private let globalLeaderboardKey = "cached_global_leaderboard"
+    private let friendsLeaderboardKey = "cached_friends_leaderboard"
+
+    private func saveCachedList(_ list: [PublicProfile], key: String) {
+        if let encoded = try? JSONEncoder().encode(list) {
+            UserDefaults.standard.set(encoded, forKey: key)
+        }
+    }
+
+    private func loadCachedList(key: String) -> [PublicProfile] {
+        guard let data = UserDefaults.standard.data(forKey: key),
+              let decoded = try? JSONDecoder().decode([PublicProfile].self, from: data) else { return [] }
+        return decoded
+    }
+
     private func loadLocalProfile() -> PublicProfile? {
         if let data = UserDefaults.standard.data(forKey: "local_user_profile"),
            let decoded = try? JSONDecoder().decode(PublicProfile.self, from: data) {
@@ -104,6 +124,7 @@ public class SocialManager: NSObject, ObservableObject, UNUserNotificationCenter
     public func clearSession() {
         pollingTask?.cancel()
         pollingTask = nil
+        friendsLoadedFromServer = false
         myProfile = nil
         friends = []
         pendingRequests = []
@@ -112,6 +133,8 @@ public class SocialManager: NSObject, ObservableObject, UNUserNotificationCenter
         globalLeaderboard = []
         incomingMatchInvites = []
         UserDefaults.standard.removeObject(forKey: "local_user_profile")
+        UserDefaults.standard.removeObject(forKey: globalLeaderboardKey)
+        UserDefaults.standard.removeObject(forKey: friendsLeaderboardKey)
     }
 
     // MARK: - Profile & Friends Fetching
@@ -194,11 +217,19 @@ public class SocialManager: NSObject, ObservableObject, UNUserNotificationCenter
                 .from("profiles")
                 .select()
                 .order("xp", ascending: false)
+                .order("id", ascending: true) // eşit XP'de sıra her sorguda değişmesin
                 .limit(50)
                 .execute()
                 .value
-            self.globalLeaderboard = globals
+            // Aynıysa yayınlama: gereksiz yeniden çizim / titreme olmasın
+            if globals != self.globalLeaderboard { self.globalLeaderboard = globals }
+            saveCachedList(globals, key: globalLeaderboardKey)
+            // Kendi XP'mizi sıralamayla aynı anda güncelle (arkadaş listesi ile tutarlı olsun)
+            if let me = myProfile, let fresh = globals.first(where: { $0.id == me.id }) {
+                self.myProfile = fresh
+            }
         } catch {
+            // Hata olursa eski listeyi koru; boşaltmak sıralamanın "gidip gelmesine" yol açıyordu
             print("Failed to fetch global leaderboard: \(error)")
         }
         
@@ -212,7 +243,11 @@ public class SocialManager: NSObject, ObservableObject, UNUserNotificationCenter
                 list.append(f)
             }
         }
-        self.friendsLeaderboard = list.sorted(by: { $0.xp > $1.xp })
+        let sortedFriends = list.sorted { $0.xp != $1.xp ? $0.xp > $1.xp : $0.id < $1.id }
+        // Profil/arkadaşlar henüz yüklenmediyse (ör. çevrimdışı açılış) kayıtlı listeyi ezme
+        guard myProfile != nil, friendsLoadedFromServer else { return }
+        if sortedFriends != self.friendsLeaderboard { self.friendsLeaderboard = sortedFriends }
+        saveCachedList(sortedFriends, key: friendsLeaderboardKey)
     }
     
     /// Robot düellosu sonucu. XP'yi sunucu verir (günlük limitli); online maç XP'si
@@ -434,6 +469,7 @@ public class SocialManager: NSObject, ObservableObject, UNUserNotificationCenter
             
             if friendIDs.isEmpty {
                 self.friends = []
+                friendsLoadedFromServer = true
                 return
             }
             
@@ -445,9 +481,10 @@ public class SocialManager: NSObject, ObservableObject, UNUserNotificationCenter
                 .value
 
             self.friends = friendProfiles.filter { $0.id != profile.id }
+            friendsLoadedFromServer = true
         } catch {
+            // Geçici ağ hatasında listeyi silme; bir sonraki yoklamada düzelir
             print("Fetch real friends error: \(error)")
-            self.friends = []
         }
     }
     
